@@ -28,12 +28,16 @@ struct BiteShell: View {
                     .allowsHitTesting(!overlayActive)
                     .zIndex(0)
 
-                // Chat overlay
-                CoachView(router: router, morphNS: morphNS)
+                // Chat overlay — fades in/out so the matchedGeometryEffect
+                // between AskBitePill and CoachView's composer drives the
+                // visible morph. (Sliding via offset(y:) breaks the shared
+                // coordinate space matchedGeometryEffect needs.)
+                CoachView(router: router, morphNS: morphNS, userProfile: $userProfile)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(BiteGradientBackground(style: .coach))
-                    .offset(y: router.route == .chat ? 0 : geometry.size.height)
-                    .animation(BiteMotion.routeSheet, value: router.route)
+                    .opacity(router.route == .chat ? 1 : 0)
+                    .allowsHitTesting(router.route == .chat)
+                    .animation(BiteMotion.chatMorph, value: router.route)
                     .zIndex(2)
 
                 // Files overlay

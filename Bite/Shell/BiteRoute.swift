@@ -64,7 +64,7 @@ final class BiteRouter {
 
     func openChat(prefill: String? = nil, thenPlus: Bool = false) {
         prefilledChatPrompt = prefill
-        withAnimation(BiteMotion.routeSheet) { route = .chat }
+        withAnimation(BiteMotion.chatMorph) { route = .chat }
         if thenPlus {
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(300))
@@ -79,7 +79,8 @@ final class BiteRouter {
     }
 
     func closeOverlay() {
-        withAnimation(BiteMotion.routeSheet) { route = .home }
+        let animation: Animation = (route == .chat) ? BiteMotion.chatMorph : BiteMotion.routeSheet
+        withAnimation(animation) { route = .home }
     }
 
     func toggleDrawer() {

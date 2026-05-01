@@ -4,10 +4,15 @@ import SwiftData
 struct CoachView: View {
     @Bindable var router: BiteRouter
     let morphNS: Namespace.ID
+    @Binding var userProfile: UserProfile
 
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: [SortDescriptor(\CoachThread.lastMessageAt, order: .reverse)])
+    private var allThreads: [CoachThread]
+
     @State private var input: String = ""
     @State private var chat: CoachChatViewModel?
+    @FocusState private var inputFocused: Bool
 
     private var orbState: OrbState {
         guard let chat else { return .idle }
@@ -30,16 +35,26 @@ struct CoachView: View {
         }
     }
 
+    private var threadCount: Int {
+        allThreads.count
+    }
+
+    private var greeting: String {
+        let trimmed = userProfile.name.trimmingCharacters(in: .whitespaces)
+        return trimmed.isEmpty ? "What's up?" : "What's up, \(trimmed)?"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
+                .padding(.top, BiteTheme.deviceSafeAreaTop)
             transcriptScroll
             quickActions
             composer
         }
-        .padding(.top, BiteTheme.topPadding)
         .padding(.bottom, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea(.container, edges: .top)
         .onAppear {
             if chat == nil {
                 let api = BiteAPIClient(auth: AuthService.shared)
@@ -53,44 +68,53 @@ struct CoachView: View {
     }
 
     private var header: some View {
-        HStack {
-            Button { router.toggleDrawer() } label: {
-                Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 18, weight: .regular))
-                    .foregroundStyle(.biteInk)
-                    .frame(width: 36, height: 36)
-                    .background(Color.white.opacity(0.8), in: Circle())
-            }
-            .buttonStyle(.plain)
-            Spacer()
-            if shouldShowMiniOrbInHeader {
-                VStack(spacing: 2) {
-                    BiteOrbImage(size: 32, mood: orbMood, state: orbState, showHalo: false)
-                    Text("New chat")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.biteInk)
+        BiteTopBar(onBack: nil) {
+            HStack {
+                Button { router.toggleDrawer() } label: {
+                    drawerButtonLabel
                 }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                Button { router.closeOverlay() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.biteInk)
+                        .frame(
+                            width: BiteTheme.topBarButtonSize,
+                            height: BiteTheme.topBarButtonSize
+                        )
+                        .background(.ultraThinMaterial, in: Circle())
+                        .overlay(Circle().stroke(Color.black.opacity(0.06), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close")
             }
-            Spacer()
-            Button { router.closeOverlay() } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.biteInk)
-                    .frame(width: 36, height: 36)
-                    .background(Color.white.opacity(0.8), in: Circle())
-            }
-            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
     }
 
-    private var shouldShowMiniOrbInHeader: Bool {
-        guard let chat else { return false }
-        switch chat.mode {
-        case .idle, .listening: return false
-        default: return true
-        }
+    private var drawerButtonLabel: some View {
+        Image(systemName: "line.3.horizontal")
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundStyle(.biteInk)
+            .frame(
+                width: BiteTheme.topBarButtonSize,
+                height: BiteTheme.topBarButtonSize
+            )
+            .background(.ultraThinMaterial, in: Circle())
+            .overlay(Circle().stroke(Color.black.opacity(0.06), lineWidth: 1))
+            .overlay(alignment: .topTrailing) {
+                if threadCount > 0 {
+                    Text("\(threadCount)")
+                        .font(.system(size: 11, weight: .heavy))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.biteRed, in: Capsule())
+                        .offset(x: 4, y: -4)
+                }
+            }
     }
 
     @ViewBuilder
@@ -112,18 +136,19 @@ struct CoachView: View {
 
     private var heroOrb: some View {
         VStack(spacing: 14) {
-            Spacer().frame(height: 40)
+            Spacer().frame(height: 24)
             BiteOrbImage(size: 130, mood: orbMood, state: orbState)
-            Text(Date(), format: .dateTime.weekday(.abbreviated).month().day())
-                .font(.system(size: 12, weight: .medium))
+            Text(Date(), format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
+                .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(.biteInkFaint)
                 .padding(.top, 6)
-            Text("What should we look at?")
-                .font(.system(size: 24, weight: .bold))
+            Text(greeting)
+                .font(.system(size: 30, weight: .heavy))
                 .tracking(-0.6)
                 .foregroundStyle(.biteInk)
                 .multilineTextAlignment(.center)
-            Spacer().frame(height: 20)
+                .padding(.horizontal, 32)
+            Spacer().frame(height: 12)
         }
         .frame(maxWidth: .infinity)
     }
@@ -173,37 +198,84 @@ struct CoachView: View {
 
     private var quickActions: some View {
         Group {
-            if let chat, chat.mode == .idle {
+            if chat?.mode == .idle || chat == nil {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        QuickActionChip(systemImage: "testtube.2", title: "Analyze labs", sub: "Review your bloodwork in plain English") {
-                            input = "Analyze my latest labs"
-                        }
-                        QuickActionChip(systemImage: "chart.line.uptrend.xyaxis", title: "Predictive modeling", sub: "Forecast HRV, recovery & sleep") {
-                            input = "Forecast my metrics for the next 7 days"
-                        }
-                        QuickActionChip(systemImage: "camera.fill", title: "Log food", sub: "Snap a photo or describe a meal") {
-                            input = "Log my lunch"
-                        }
-                        QuickActionChip(systemImage: "clock", title: "Schedule check-in", sub: "Ask me every morning at 8am") {
-                            input = "Schedule a daily check-in"
-                        }
-                        QuickActionChip(systemImage: "heart.fill", title: "Symptom check", sub: "Describe how you feel right now") {
-                            input = "I have a headache and feel tired"
-                        }
-                        QuickActionChip(systemImage: "figure.run", title: "New training plan", sub: "Personalize for your goals") {
-                            input = "Build me a training plan"
-                        }
-                        QuickActionChip(systemImage: "pin.fill", title: "Goal setting", sub: "Define a target & track progress") {
-                            input = "Help me set a new goal"
+                    HStack(spacing: 12) {
+                        ForEach(Self.quickActionItems, id: \.title) { item in
+                            QuickActionCard(
+                                systemImage: item.icon,
+                                iconColor: item.color,
+                                title: item.title,
+                                subtitle: item.subtitle
+                            ) {
+                                input = item.prefill
+                                inputFocused = true
+                            }
                         }
                     }
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 4)
                 }
                 .padding(.bottom, 12)
             }
         }
+    }
+
+    /// Static list of starter prompts shown as cards on the Coach idle
+    /// screen. Tapping a card pre-fills the composer; the user can edit
+    /// before sending. Order is intentional: the two highest-value
+    /// actions ("Predictive modeling" and "Log food") sit at indices 0
+    /// and 1 so they're visible at rest on a standard iPhone width.
+    private static let quickActionItems: [QuickActionItem] = [
+        QuickActionItem(
+            icon: "chart.line.uptrend.xyaxis",
+            color: .biteRingRecovery,
+            title: "Predictive modeling",
+            subtitle: "Forecast your metrics",
+            prefill: "Forecast my metrics for the next 7 days"
+        ),
+        QuickActionItem(
+            icon: "fork.knife",
+            color: .biteRed,
+            title: "Log food",
+            subtitle: "Track your daily intake",
+            prefill: "Help me log a meal"
+        ),
+        QuickActionItem(
+            icon: "testtube.2",
+            color: .biteHydration,
+            title: "Analyze labs",
+            subtitle: "Review bloodwork",
+            prefill: "Analyze my latest labs"
+        ),
+        QuickActionItem(
+            icon: "heart.fill",
+            color: .biteRingNutrition,
+            title: "Symptom check",
+            subtitle: "Describe how you feel",
+            prefill: "I'd like to do a symptom check"
+        ),
+        QuickActionItem(
+            icon: "figure.run",
+            color: .biteCarbs,
+            title: "Training plan",
+            subtitle: "Personalize for goals",
+            prefill: "Build me a training plan"
+        ),
+        QuickActionItem(
+            icon: "pin.fill",
+            color: .biteFat,
+            title: "Goal setting",
+            subtitle: "Define a target",
+            prefill: "Help me set a new goal"
+        )
+    ]
+
+    private struct QuickActionItem {
+        let icon: String
+        let color: Color
+        let title: String
+        let subtitle: String
+        let prefill: String
     }
 
     private var composer: some View {
@@ -223,6 +295,7 @@ struct CoachView: View {
             TextField("Ask Bite anything", text: $input)
                 .font(.system(size: 15))
                 .foregroundStyle(.biteInk)
+                .focused($inputFocused)
                 .submitLabel(.send)
                 .onSubmit(submit)
 
@@ -271,47 +344,5 @@ struct CoachView: View {
         guard !text.isEmpty, let chat else { return }
         input = ""
         chat.send(text)
-    }
-}
-
-struct QuickActionChip: View {
-    let systemImage: String
-    let title: String
-    let sub: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 8) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(.biteRedTint)
-                    Image(systemName: systemImage)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.biteRed)
-                }
-                .frame(width: 34, height: 34)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.biteInk)
-                    Text(sub)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.biteInkMuted)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .padding(12)
-            .frame(width: 156, height: 110, alignment: .topLeading)
-        }
-        .buttonStyle(.plain)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.black.opacity(0.05), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.04), radius: 3, x: 0, y: 1)
     }
 }

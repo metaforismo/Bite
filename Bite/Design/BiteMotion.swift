@@ -28,6 +28,13 @@ enum BiteMotion {
     static let onboardingCTA   = Animation.spring(response: 0.45, dampingFraction: 0.82, blendDuration: 0)
     static let chipSelect      = Animation.spring(response: 0.28, dampingFraction: 0.72, blendDuration: 0)
     static let progressBar     = Animation.spring(response: 0.55, dampingFraction: 0.85, blendDuration: 0)
+
+    /// Chat morph timing — used by `BiteShell` when transitioning to/from
+    /// the chat route. Response 0.45s lets the composer's geometry expand
+    /// from the home pill (~50pt tall) to the full-width chat composer
+    /// readably; damping 0.82 prevents the perceived bounce that 0.7
+    /// would introduce on an element this prominent.
+    static let chatMorph       = Animation.spring(response: 0.45, dampingFraction: 0.82, blendDuration: 0)
 }
 
 /// Lightweight haptic helper used by selection chips, page advances, and the
