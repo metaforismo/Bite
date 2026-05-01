@@ -111,4 +111,44 @@ final class CoachToolDispatcher {
             summary: String(format: "Weight: %.1f kg", weightKg)
         )
     }
+
+    // MARK: - Tool result router
+
+    /// Decode a `tool_result` SSE event by name and dispatch to the right
+    /// mirror method. Returns the receipt for the chat UI to surface.
+    /// Food entries go through the artifact path instead — they need
+    /// confirmation before mutating local state.
+    func handleToolResult(name: String, resultJSON: String) -> CoachToolReceipt? {
+        guard let data = resultJSON.data(using: .utf8) else { return nil }
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+        switch name {
+        case "addDrink":
+            guard let r = try? decoder.decode(DrinkResult.self, from: data) else { return nil }
+            let kind: DrinkKind = r.kind == "caffeine" ? .caffeine : .water
+            return mirrorDrink(kind: kind, volumeMl: r.volumeMl, caffeineMg: r.caffeineMg, label: r.label)
+        case "setActivityStatus":
+            guard let r = try? decoder.decode(ActivityStatusResult.self, from: data) else { return nil }
+            let kind = ActivityStatusKind(rawValue: r.kind == "on_break" ? "onBreak" : r.kind) ?? .active
+            return mirrorActivityStatus(kind: kind, startedAt: Date(timeIntervalSince1970: r.startedAt / 1000), note: r.note)
+        default:
+            return nil
+        }
+    }
+
+    // MARK: - Tool result decode types
+
+    private struct DrinkResult: Decodable {
+        let kind: String
+        let volumeMl: Double?
+        let caffeineMg: Double?
+        let label: String?
+    }
+
+    private struct ActivityStatusResult: Decodable {
+        let kind: String
+        let startedAt: Double
+        let note: String?
+    }
 }

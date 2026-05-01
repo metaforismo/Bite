@@ -14,6 +14,10 @@ final class CoachChatViewModel {
     var streamingText: String = ""
     var isStreaming: Bool = false
     var lastError: String?
+    /// Set by the tool_result handler so the chat scroll can render an
+    /// inline "View in [tab]" chip without an artifact card. Cleared
+    /// after the host view forwards it to BiteRouter.
+    var lastInlineReceipt: CoachToolReceipt?
 
     struct ThinkingStep: Identifiable, Hashable {
         let id = UUID()
@@ -95,9 +99,19 @@ final class CoachChatViewModel {
                         assistantText += chunk
                         streamingText = assistantText
                         if mode != .response { mode = .response }
-                    case .toolCall, .toolResult:
-                        // Telemetry only at this layer.
+                    case .toolCall:
+                        // Worker is invoking a tool. Telemetry only — the
+                        // resulting state is reflected via `.artifact` (food)
+                        // or `.toolResult` (drink/activity/weight) below.
                         break
+                    case .toolResult(let name, let resultJSON):
+                        // Mirror non-food tool outcomes (food goes via the
+                        // food_cart artifact path so confirmation can gate
+                        // the local write). The dispatcher returns a
+                        // receipt the host view forwards to BiteRouter.
+                        if let receipt = CoachToolDispatcher.shared.handleToolResult(name: name, resultJSON: resultJSON) {
+                            lastInlineReceipt = receipt
+                        }
                     case .artifact(let payload):
                         let payloadData = payload.payload.json.data(using: .utf8) ?? Data()
                         let artifact = ArtifactMessage(
