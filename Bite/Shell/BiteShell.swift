@@ -74,6 +74,22 @@ struct BiteShell: View {
                 .presentationDragIndicator(.visible)
                 .presentationContentInteraction(.scrolls)
         }
+        .sheet(isPresented: Binding(
+            get: { router.logSheetOpen },
+            set: { if !$0 { router.closeLogSheet() } }
+        )) {
+            LogSheet(router: router)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.hidden)
+        }
+        .sheet(isPresented: Binding(
+            get: { router.healthRecordsSheetOpen },
+            set: { if !$0 { router.closeHealthRecords() } }
+        )) {
+            HealthRecordsScreen(router: router)
+                .presentationDetents([.large, .medium])
+                .presentationDragIndicator(.hidden)
+        }
         .fullScreenCover(item: Binding(
             get: { router.activeWorkoutSession },
             set: { if $0 == nil { router.endWorkoutSession() } }

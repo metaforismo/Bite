@@ -47,6 +47,8 @@ final class BiteRouter {
     var drawerOpen: Bool = false
     var plusSheetOpen: Bool = false
     var filesSheetOpen: Bool = false
+    var logSheetOpen: Bool = false
+    var healthRecordsSheetOpen: Bool = false
     var prefilledChatPrompt: String?
     var modalSheet: ModalSheet?
     var activeWorkoutSession: WorkoutSessionContext?
@@ -119,6 +121,27 @@ final class BiteRouter {
 
     func closePlusSheet() {
         withAnimation(BiteMotion.plusSheet) { plusSheetOpen = false }
+    }
+
+    /// Unified entry point for all "log something" actions, surfacing the
+    /// existing modal sheets (hydration/caffeine/cycle/activity/smartAlarm)
+    /// + Coach handoff for food, plus a Files shortcut. Replaces the
+    /// `openChat(thenPlus: true)` workaround on the bottom-pill `+` button.
+    func openLogSheet() {
+        withAnimation(BiteMotion.plusSheet) { logSheetOpen = true }
+    }
+
+    func closeLogSheet() {
+        withAnimation(BiteMotion.plusSheet) { logSheetOpen = false }
+    }
+
+    func openHealthRecords() {
+        drawerOpen = false
+        healthRecordsSheetOpen = true
+    }
+
+    func closeHealthRecords() {
+        healthRecordsSheetOpen = false
     }
 
     func openModal(_ sheet: ModalSheet) {

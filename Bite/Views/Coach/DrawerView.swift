@@ -30,7 +30,6 @@ struct DrawerView: View {
             search
             topLinks
             history
-            settingsFooter
         }
         .padding(.top, BiteTheme.deviceSafeAreaTop + BiteTheme.topBarTopOffset)
         .background(.regularMaterial)
@@ -73,7 +72,9 @@ struct DrawerView: View {
 
     private var topLinks: some View {
         VStack(spacing: 0) {
-            DrawerRow(systemImage: "doc.text.fill", title: "Health Records", iconColor: .biteRed) {}
+            DrawerRow(systemImage: "doc.text.fill", title: "Health Records", iconColor: .biteRed) {
+                router.openHealthRecords()
+            }
             DrawerRow(systemImage: "folder.fill", title: "Files", iconColor: .biteRedSoft) {
                 router.openFiles()
             }
@@ -114,21 +115,6 @@ struct DrawerView: View {
         .padding(.horizontal, 8)
     }
 
-    private var settingsFooter: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(.biteInkMuted)
-            Text("Settings")
-                .font(.system(size: 14.5, weight: .medium))
-                .foregroundStyle(.biteInk)
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(Color(hex: 0xF8F6F4).opacity(0.7))
-        .overlay(alignment: .top) { Rectangle().fill(Color.black.opacity(0.05)).frame(height: 1) }
-    }
 }
 
 private struct DrawerHeader: View {
