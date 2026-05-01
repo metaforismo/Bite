@@ -228,6 +228,7 @@ struct TodayView: View {
                 sleepSub: sleepPct >= 0.85 ? "Good" : "Catch up",
                 onSleepTap: { showingSleepDetail = true }
             )
+            .askCoachContext("Walk me through my rings — what should I focus on today?")
         }
         .padding(.horizontal, 20)
     }
@@ -256,11 +257,13 @@ struct TodayView: View {
             summary: hrv == nil ? "Connect Apple Health" : "All in range"
         )
         .padding(.horizontal, 20)
+        .askCoachContext("What do my biomarkers tell you about today?")
     }
 
     private var mealsSection: some View {
         MealsTimelineCard(entries: todayEntries, consumedKcal: consumedKcal, goalKcal: userProfile.calorieGoal)
             .padding(.horizontal, 20)
+            .askCoachContext("How's my nutrition looking today vs. my goals?")
     }
 
     @ViewBuilder
@@ -281,7 +284,9 @@ struct TodayView: View {
                 streakDays: streakDays(),
                 last7Active: last7Active()
             )
+            .askCoachContext("Am I hitting my hydration goals this week?")
             CaffeineCard(onTap: { router.openModal(.caffeine) })
+                .askCoachContext("Is my caffeine intake affecting my sleep?")
         }
         .padding(.horizontal, 20)
     }
