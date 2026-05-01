@@ -11,6 +11,7 @@ enum ModalSheet: Identifiable, Hashable {
     case caffeine
     case activityStatus
     case smartAlarm
+    case sleepDial
     case menstrualLog
     case strengthExerciseLibrary
 
@@ -20,6 +21,7 @@ enum ModalSheet: Identifiable, Hashable {
         case .caffeine: return "caffeine"
         case .activityStatus: return "activityStatus"
         case .smartAlarm: return "smartAlarm"
+        case .sleepDial: return "sleepDial"
         case .menstrualLog: return "menstrualLog"
         case .strengthExerciseLibrary: return "strengthExerciseLibrary"
         }

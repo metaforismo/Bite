@@ -121,8 +121,14 @@ struct OrbitDial<Center: View>: View {
 
     // MARK: - Angle helpers
 
-    /// 0 hour → 0°, 6 hour → 90°, etc. Hour value can be fractional
-    /// (e.g. 22.5 = 22:30).
+    /// 0 hour → 0°, 6 hour → 90°, etc. Hour value can be fractional.
+    static func angle(forHour hour: Double) -> Double { DialClock.angle(forHour: hour) }
+    static func radians(forHour hour: Double) -> Double { DialClock.radians(forHour: hour) }
+}
+
+/// Non-generic angle helpers — call these from external code without
+/// having to specialize `OrbitDial<Center>`.
+enum DialClock {
     static func angle(forHour hour: Double) -> Double {
         (hour.truncatingRemainder(dividingBy: 24) / 24.0) * 360.0
     }
