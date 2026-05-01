@@ -1,12 +1,9 @@
 import Foundation
+import SwiftData
 
-/// Mirrors Coach tool outcomes (currently `food_cart` artifacts) into local
-/// SwiftData so the data tabs (Today rings, Journal) reflect Coach-driven
-/// changes immediately. The worker has already persisted to D1; iOS just
-/// projects that state locally to drive the UI.
-///
-/// Phase 1 wires food entry mirroring. Future phases extend with drink,
-/// activity, cycle, workout, weight, goal-change tools.
+/// Mirrors Coach tool outcomes into local SwiftData so the data tabs
+/// reflect Coach-driven changes immediately. The worker persists to D1;
+/// iOS projects that state locally to drive the UI.
 @MainActor
 final class CoachToolDispatcher {
     static let shared = CoachToolDispatcher()
@@ -15,8 +12,9 @@ final class CoachToolDispatcher {
 
     private init() {}
 
-    /// Append a Coach-extracted food entry to today's log. Returns a receipt
-    /// the chat UI uses to render a "View in Today" affordance.
+    // MARK: - Food
+
+    /// Append a Coach-extracted food entry to today's log.
     @discardableResult
     func mirrorFoodEntry(_ payload: FoodCartPayload, originatingArtifactId: UUID? = nil) -> CoachToolReceipt {
         let entry = FoodEntry(
@@ -33,8 +31,6 @@ final class CoachToolDispatcher {
             isSaved: false
         )
         let existing = storage.loadDayLog(for: entry.createdAt).entries
-        // Idempotent: if an entry with the same id exists already, replace it
-        // (handles correctFoodEntry artifact updates that re-render the same id).
         let merged = existing.filter { $0.id != entry.id } + [entry]
         storage.saveDayLog(DayLog(date: entry.createdAt, entries: merged))
 
@@ -46,9 +42,6 @@ final class CoachToolDispatcher {
         )
     }
 
-    /// Remove a previously mirrored food entry. Used when the user discards a
-    /// proposed entry — the worker D1 row remains; future cleanup tool can
-    /// reconcile.
     @discardableResult
     func discardMirroredFood(entryId: UUID, on date: Date = Date()) -> CoachToolReceipt {
         let day = storage.loadDayLog(for: date)
@@ -59,6 +52,63 @@ final class CoachToolDispatcher {
             entryId: entryId,
             affectedTab: .home,
             summary: "Removed from today's log"
+        )
+    }
+
+    // MARK: - Drink
+
+    @discardableResult
+    func mirrorDrink(kind: DrinkKind, volumeMl: Double?, caffeineMg: Double?, label: String?) -> CoachToolReceipt {
+        let entry = SDDrinkEntry(
+            id: UUID(),
+            kind: kind,
+            volumeML: volumeMl,
+            caffeineMg: caffeineMg,
+            label: label,
+            timestamp: Date()
+        )
+        BiteModelContainer.shared.mainContext.insert(entry)
+        try? BiteModelContainer.shared.mainContext.save()
+
+        let summary: String
+        switch kind {
+        case .water:
+            summary = "Logged \(Int(volumeMl ?? 0))ml water"
+        case .caffeine:
+            summary = "Logged \(label ?? "caffeine") · \(Int(caffeineMg ?? 0))mg"
+        }
+
+        return CoachToolReceipt(
+            kind: .drinkAdded,
+            entryId: entry.id,
+            affectedTab: .home,
+            summary: summary
+        )
+    }
+
+    // MARK: - Activity status
+
+    @discardableResult
+    func mirrorActivityStatus(kind: ActivityStatusKind, startedAt: Date = Date(), note: String? = nil) -> CoachToolReceipt {
+        storage.setActivityStatus(kind, startedAt: startedAt, note: note)
+        return CoachToolReceipt(
+            kind: .activityStatusChanged,
+            entryId: nil,
+            affectedTab: .home,
+            summary: "Status: \(kind.displayName)"
+        )
+    }
+
+    // MARK: - Weight
+
+    @discardableResult
+    func mirrorWeight(weightKg: Double, recordedAt: Date = Date()) -> CoachToolReceipt {
+        storage.addWeightEntry(WeightEntry(date: recordedAt, weightKg: weightKg))
+        return CoachToolReceipt(
+            kind: .weightLogged,
+            entryId: nil,
+            affectedTab: .home,
+            summary: String(format: "Weight: %.1f kg", weightKg)
         )
     }
 }
