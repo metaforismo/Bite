@@ -51,6 +51,27 @@ final class BiteRouter {
     var modalSheet: ModalSheet?
     var activeWorkoutSession: WorkoutSessionContext?
 
+    /// One-shot id consumed by `MealsTimelineCard` / similar lists to flash a
+    /// ring-pulse highlight on a freshly-mirrored entry. Cleared after consumption.
+    var pendingHighlightEntryId: UUID?
+
+    /// Last receipt from a Coach-driven mutation. The chat surfaces a
+    /// "View in Today" chip from this; consumed views can read the entry id.
+    var lastToolReceipt: CoachToolReceipt?
+
+    func recordToolReceipt(_ receipt: CoachToolReceipt) {
+        lastToolReceipt = receipt
+    }
+
+    /// Close the chat, switch to the receipt's affected tab, and stage the
+    /// entry id for highlight. Used when the user taps "View in Today".
+    func revealLastReceipt() {
+        guard let receipt = lastToolReceipt else { return }
+        if let tab = receipt.affectedTab { homeTab = tab }
+        pendingHighlightEntryId = receipt.entryId
+        closeOverlay()
+    }
+
     func startWorkoutSession(_ ctx: WorkoutSessionContext) {
         withAnimation(BiteMotion.routeSheet) {
             activeWorkoutSession = ctx
