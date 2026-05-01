@@ -77,7 +77,7 @@ enum BiteTheme {
     // where page content may begin: nothing decorative or interactive may
     // render above y == reservedTopZone except the top bar itself.
     static let topBarButtonSize: CGFloat = 56
-    static let topBarHorizontalPadding: CGFloat = 24
+    static let topBarHorizontalPadding: CGFloat = 16
     static let topBarTopOffset: CGFloat = 12
     static let reservedTopZone: CGFloat = 150
 

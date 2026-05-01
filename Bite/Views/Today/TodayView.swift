@@ -83,19 +83,30 @@ struct TodayView: View {
 
     private var header: some View {
         BiteTopBar(onBack: nil) {
-            HStack {
+            HStack(spacing: 10) {
                 HStack(spacing: 8) {
                     Image("BiteLogo")
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 26, height: 26)
+                        .frame(width: 28, height: 28)
                         .clipShape(.rect(cornerRadius: 7, style: .continuous))
                     Text("Bite")
-                        .font(.system(size: 17, weight: .heavy))
+                        .font(.system(size: 18, weight: .heavy))
                         .tracking(-0.4)
                         .foregroundStyle(.biteInk)
                 }
                 Spacer()
+                Button {} label: {
+                    Image(systemName: "bell")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.biteInk)
+                        .frame(width: 36, height: 36)
+                        .background(Color.white.opacity(0.85), in: Circle())
+                        .overlay(Circle().stroke(Color.black.opacity(0.06), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Notifications")
+
                 Button {
                     BiteHaptics.impact(.light)
                     showingSettings = true

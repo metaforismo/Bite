@@ -48,16 +48,11 @@ struct BiteTopBar<Trailing: View>: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Back")
-            } else {
-                // Reserve the same width so the trailing slot doesn't reflow
-                // when the back button toggles between pages.
-                Color.clear
-                    .frame(
-                        width: BiteTheme.topBarButtonSize,
-                        height: BiteTheme.topBarButtonSize
-                    )
-                    .accessibilityHidden(true)
             }
+            // Note: when onBack is nil, no placeholder is reserved — the
+            // trailing slot runs edge-to-edge so leading content (logo,
+            // avatar, drawer button) hugs the screen's left padding
+            // symmetrically with whatever sits on the trailing edge.
 
             trailing()
                 .frame(maxWidth: .infinity)
