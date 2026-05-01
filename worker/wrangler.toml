@@ -1,0 +1,31 @@
+name = "bite-worker"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bite_db"
+database_id = "YOUR_D1_ID_HERE"  # user fills this
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "bite-files"
+
+[[vectorize]]
+binding = "VECTOR_INDEX_MEMORIES"
+index_name = "bite-memories"
+
+[[vectorize]]
+binding = "VECTOR_INDEX_FILES"
+index_name = "bite-files"
+
+[vars]
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+# Secrets to set via `wrangler secret put`:
+#   OPENROUTER_API_KEY
+#   FIREBASE_PROJECT_ID
+#   FIREBASE_CLIENT_EMAIL
+#   FIREBASE_PRIVATE_KEY
+#   FILE_ENCRYPTION_MASTER_KEY  (32-byte hex)

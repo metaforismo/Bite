@@ -1,0 +1,21 @@
+name = "bite-worker"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Test-only config — Miniflare's local runtime doesn't simulate Vectorize, so we
+# omit the two VECTOR_INDEX_* bindings here. Tests that exercise vector search
+# either mock the index methods or skip the call. Real D1 + R2 bindings are
+# still simulated locally.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bite_db_test"
+database_id = "test-d1-id"
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "bite-files-test"
+
+[vars]
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
