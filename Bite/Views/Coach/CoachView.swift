@@ -71,22 +71,31 @@ struct CoachView: View {
         BiteTopBar(onBack: nil) {
             HStack {
                 Button { router.toggleDrawer() } label: {
-                    drawerButtonLabel
+                    chromeButtonLabel(systemImage: "line.3.horizontal")
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Threads")
+                // Badge sits in a separate overlay anchored to the button's
+                // outer frame so it never affects the inner icon's centering
+                // (otherwise the badge layer perturbs the HStack alignment
+                // and the drawer button drifts off-axis from the close X).
+                .overlay(alignment: .topTrailing) {
+                    if threadCount > 0 {
+                        Text("\(threadCount)")
+                            .font(.system(size: 11, weight: .heavy))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.biteRed, in: Capsule())
+                            .offset(x: 4, y: -4)
+                            .allowsHitTesting(false)
+                    }
+                }
 
                 Spacer()
 
                 Button { router.closeOverlay() } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.biteInk)
-                        .frame(
-                            width: BiteTheme.topBarButtonSize,
-                            height: BiteTheme.topBarButtonSize
-                        )
-                        .glassEffect(.regular.tint(.white.opacity(0.4)).interactive(), in: .circle)
-                        .overlay(Circle().stroke(Color.black.opacity(0.06), lineWidth: 1))
+                    chromeButtonLabel(systemImage: "xmark")
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Close")
@@ -94,8 +103,12 @@ struct CoachView: View {
         }
     }
 
-    private var drawerButtonLabel: some View {
-        Image(systemName: "line.3.horizontal")
+    /// Identical 56×56 Liquid-Glass circle for both the drawer button and
+    /// the close button. Keeping the structure identical guarantees the two
+    /// buttons sit at the exact same vertical position inside the BiteTopBar
+    /// row, mirrored across the centerline.
+    private func chromeButtonLabel(systemImage: String) -> some View {
+        Image(systemName: systemImage)
             .font(.system(size: 18, weight: .semibold))
             .foregroundStyle(.biteInk)
             .frame(
@@ -104,17 +117,6 @@ struct CoachView: View {
             )
             .glassEffect(.regular.tint(.white.opacity(0.4)).interactive(), in: .circle)
             .overlay(Circle().stroke(Color.black.opacity(0.06), lineWidth: 1))
-            .overlay(alignment: .topTrailing) {
-                if threadCount > 0 {
-                    Text("\(threadCount)")
-                        .font(.system(size: 11, weight: .heavy))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.biteRed, in: Capsule())
-                        .offset(x: 4, y: -4)
-                }
-            }
     }
 
     @ViewBuilder

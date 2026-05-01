@@ -34,10 +34,12 @@ struct JournalView: View {
                         .padding(.horizontal, 20)
                 }
             }
+            .padding(.top, BiteTheme.deviceSafeAreaTop)
             .padding(.bottom, BiteTheme.bottomFloatingClearance + 56)
         }
         .scrollIndicators(.hidden)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea(.container, edges: .top)
         .task { await vm.loadDay() }
     }
 }

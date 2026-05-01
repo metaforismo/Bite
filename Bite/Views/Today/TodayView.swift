@@ -61,11 +61,13 @@ struct TodayView: View {
                 hydrationStreakSection
                 upNextSection
             }
+            .padding(.top, BiteTheme.deviceSafeAreaTop)
             .padding(.bottom, BiteTheme.bottomFloatingClearance + 56)
             .padding(.horizontal, 0)
         }
         .scrollIndicators(.hidden)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea(.container, edges: .top)
         .task { await refresh() }
         .sheet(isPresented: $showingSleepDetail) {
             SleepDetailView(router: router, lastNightSleepHours: sleepHours)
