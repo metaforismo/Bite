@@ -40,13 +40,9 @@ struct BiteShell: View {
                     .animation(BiteMotion.chatMorph, value: router.route)
                     .zIndex(2)
 
-                // Files overlay
-                FilesScreen(router: router)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(BiteGradientBackground(style: .files))
-                    .offset(y: router.route == .files ? 0 : geometry.size.height)
-                    .animation(BiteMotion.routeSheet, value: router.route)
-                    .zIndex(3)
+                // Files now lives as a native sheet (see .sheet modifier
+                // below). Removing the route-driven overlay so Apple Files-
+                // style detents + drag-to-dismiss handle presentation.
 
                 // V2 modal-sheet host — sits above the route layer, scrim handles
                 // tap-to-dismiss; the home layer's scale/blur is driven by
@@ -68,6 +64,15 @@ struct BiteShell: View {
             PlusSheet(router: router)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: Binding(
+            get: { router.filesSheetOpen },
+            set: { if !$0 { router.closeFiles() } }
+        )) {
+            FilesScreen(router: router)
+                .presentationDetents([.large, .medium])
+                .presentationDragIndicator(.visible)
+                .presentationContentInteraction(.scrolls)
         }
         .fullScreenCover(item: Binding(
             get: { router.activeWorkoutSession },

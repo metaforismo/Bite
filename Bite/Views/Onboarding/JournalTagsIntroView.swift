@@ -5,7 +5,7 @@ struct JournalTagsIntroView: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "chart.line.uptrend.xyaxis",
+            iconImageName: "Charts",
             iconColor: .biteOrange,
             title: "See what's driving you",
             subtitle: "Bite quietly tags habits like late meals, alcohol, and stress, then shows you which ones move your recovery score — so you can stop guessing.",

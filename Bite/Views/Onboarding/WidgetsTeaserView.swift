@@ -6,7 +6,7 @@ struct WidgetsTeaserView: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "rectangle.stack.fill",
+            iconImageName: "Widgets",
             iconColor: .biteRingRecovery,
             title: "Add Bite to your Home Screen",
             subtitle: "Five widgets keep your day in glance — rings, biomarkers, hydration, calories, and macros.",

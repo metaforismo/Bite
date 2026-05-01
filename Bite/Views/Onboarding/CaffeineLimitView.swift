@@ -8,7 +8,7 @@ struct CaffeineLimitView: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "cup.and.saucer.fill",
+            iconImageName: "Coffee",
             iconColor: .biteCarbs,
             title: "Daily caffeine limit",
             subtitle: "The FDA suggests 400 mg as a safe daily ceiling for most healthy adults."

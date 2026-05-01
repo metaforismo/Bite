@@ -8,7 +8,7 @@ struct HydrationGoalView: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "drop.fill",
+            iconImageName: "Hydration",
             iconColor: .biteHydration,
             title: "Daily hydration goal",
             subtitle: "Most adults aim for 2–3 liters depending on activity and climate."

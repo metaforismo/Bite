@@ -46,6 +46,7 @@ final class BiteRouter {
     var homeTab: HomeTab = .home
     var drawerOpen: Bool = false
     var plusSheetOpen: Bool = false
+    var filesSheetOpen: Bool = false
     var prefilledChatPrompt: String?
     var modalSheet: ModalSheet?
     var activeWorkoutSession: WorkoutSessionContext?
@@ -75,7 +76,11 @@ final class BiteRouter {
 
     func openFiles() {
         drawerOpen = false
-        withAnimation(BiteMotion.routeSheet) { route = .files }
+        filesSheetOpen = true
+    }
+
+    func closeFiles() {
+        filesSheetOpen = false
     }
 
     func closeOverlay() {

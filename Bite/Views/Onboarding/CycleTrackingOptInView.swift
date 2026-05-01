@@ -6,7 +6,7 @@ struct CycleTrackingOptInView: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "calendar.badge.clock",
+            iconImageName: "CycleCalendar",
             iconColor: .biteRedSoft,
             title: "Track your cycle?",
             subtitle: "Bite reads HealthKit cycle data and shows phase-aware insights for energy, recovery, and nutrition. You can toggle this anytime in Settings."

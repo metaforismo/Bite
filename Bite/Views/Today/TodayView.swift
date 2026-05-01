@@ -16,6 +16,7 @@ struct TodayView: View {
     @State private var sleepHours: Double? = nil
     @State private var dailyInsight: String? = nil
     @State private var showingSleepDetail = false
+    @State private var showingSettings = false
 
     private var currentStatus: SDActivityStatus? { activityStatuses.first }
     private var currentStatusKind: ActivityStatusKind { currentStatus?.kind ?? .active }
@@ -60,7 +61,6 @@ struct TodayView: View {
                 hydrationStreakSection
                 upNextSection
             }
-            .padding(.top, 56)
             .padding(.bottom, BiteTheme.bottomFloatingClearance + 56)
             .padding(.horizontal, 0)
         }
@@ -70,46 +70,54 @@ struct TodayView: View {
         .sheet(isPresented: $showingSleepDetail) {
             SleepDetailView(router: router, lastNightSleepHours: sleepHours)
         }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView(userProfile: $userProfile)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
     }
 
     // MARK: Sections
 
     private var header: some View {
-        HStack(alignment: .center) {
-            HStack(spacing: 8) {
-                Image("BiteLogo")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 26, height: 26)
-                    .clipShape(.rect(cornerRadius: 7, style: .continuous))
-                Text("Bite")
-                    .font(.system(size: 17, weight: .heavy))
-                    .tracking(-0.4)
-                    .foregroundStyle(.biteInk)
-            }
-            Spacer()
-            HStack(spacing: 8) {
-                Button {} label: {
-                    Image(systemName: "bell")
-                        .font(.system(size: 18, weight: .regular))
+        BiteTopBar(onBack: nil) {
+            HStack {
+                HStack(spacing: 8) {
+                    Image("BiteLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 26, height: 26)
+                        .clipShape(.rect(cornerRadius: 7, style: .continuous))
+                    Text("Bite")
+                        .font(.system(size: 17, weight: .heavy))
+                        .tracking(-0.4)
                         .foregroundStyle(.biteInk)
+                }
+                Spacer()
+                Button {
+                    BiteHaptics.impact(.light)
+                    showingSettings = true
+                } label: {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(hex: 0xFFD5D5), Color(hex: 0xC72E2E)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                         .frame(width: 36, height: 36)
-                        .background(Color.white.opacity(0.7), in: Circle())
+                        .overlay(
+                            Text(userProfile.name.first.map { String($0).uppercased() } ?? "B")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(.white)
+                        )
+                        .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 2)
                 }
                 .buttonStyle(.plain)
-                Circle()
-                    .fill(LinearGradient(colors: [Color(hex: 0xFFD5D5), Color(hex: 0xC72E2E)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 36, height: 36)
-                    .overlay(
-                        Text(userProfile.name.first.map { String($0).uppercased() } ?? "B")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.white)
-                    )
-                    .shadow(color: .black.opacity(0.08), radius: 2, x: 0, y: 2)
+                .accessibilityLabel("Account")
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
     }
 
     private var date: some View {
@@ -218,7 +226,8 @@ struct TodayView: View {
         return InsightCard(
             title: title,
             message: message,
-            onTapViewMore: { router.openChat(prefill: copy.ctaPrefill) }
+            onTapViewMore: { router.openChat(prefill: copy.ctaPrefill) },
+            heroImageName: "TakeItEasy"
         )
         .padding(.horizontal, 20)
     }

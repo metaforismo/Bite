@@ -32,7 +32,7 @@ struct DrawerView: View {
             history
             settingsFooter
         }
-        .padding(.top, 56)
+        .padding(.top, BiteTheme.deviceSafeAreaTop + BiteTheme.topBarTopOffset)
         .background(.regularMaterial)
         .overlay(alignment: .trailing) {
             Rectangle()

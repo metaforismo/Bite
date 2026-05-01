@@ -153,7 +153,7 @@ private struct NameInputPage: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "person.crop.circle.fill",
+            iconImageName: "Profile",
             iconColor: .biteBlue,
             title: "What's your name?",
             subtitle: "Bite uses your name to personalize coaching.",

@@ -23,7 +23,7 @@ struct AllergiesView: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "exclamationmark.shield.fill",
+            iconImageName: "AllergiesShield",
             iconColor: .biteWarning,
             title: "Any allergies or intolerances?",
             subtitle: "Bite will avoid these in any meal suggestion or recipe. Skip if none apply.",

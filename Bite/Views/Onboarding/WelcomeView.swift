@@ -29,6 +29,8 @@ struct WelcomeView: View {
                     .foregroundStyle(.biteInkMuted)
                     .multilineTextAlignment(.center)
                     .lineSpacing(4)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                     .opacity(taglineVisible ? 1 : 0)
                     .offset(y: taglineVisible ? 0 : 12)
             }

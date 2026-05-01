@@ -8,7 +8,7 @@ struct CameraPermissionView: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "camera.fill",
+            iconImageName: "Camera",
             iconColor: .bitePurple,
             title: "Enable camera",
             subtitle: "Snap a meal — Bite analyzes the photo and logs it automatically.",

@@ -12,7 +12,7 @@ struct PersonalitySelectionView: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "sparkles",
+            iconImageName: "Personality",
             iconColor: .biteRedSoft,
             title: "Coach personality",
             subtitle: "How do you want Bite to talk to you? You can change this anytime in Settings."

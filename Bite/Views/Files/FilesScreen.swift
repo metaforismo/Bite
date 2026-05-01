@@ -46,17 +46,16 @@ struct FilesScreen: View {
                             .foregroundStyle(.biteInkFaint)
                     }
                 }
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        router.closeOverlay()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.biteInk)
-                            .frame(width: 36, height: 36)
-                            .background(Color.white.opacity(0.8), in: Circle())
+                // Sheet drag-indicator handles dismissal; trailing + opens
+                // PlusSheet so the user can attach files via the existing
+                // upload flow.
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { router.openPlusSheet() } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundStyle(Color.biteRed)
                     }
-                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add")
                 }
             }
             .navigationDestination(for: FolderDestination.self) { dest in

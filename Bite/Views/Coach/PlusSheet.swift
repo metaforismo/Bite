@@ -78,20 +78,22 @@ struct PlusSheet: View {
 
     private var header: some View {
         HStack {
-            Spacer().frame(width: 28)
             Spacer()
             Text("Add to chat")
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(.biteInk)
             Spacer()
+        }
+        .overlay(alignment: .trailing) {
             Button { router.closePlusSheet() } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.biteInk)
-                    .frame(width: 28, height: 28)
+                    .frame(width: 32, height: 32)
                     .background(Color(hex: 0xF0EFEE), in: Circle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Close")
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 6)
@@ -117,8 +119,8 @@ struct PlusSheet: View {
                         .frame(width: 70, height: 70)
                 }
             }
-            .padding(.horizontal, 16)
         }
+        .contentMargins(.horizontal, 16, for: .scrollContent)
         .padding(.vertical, 14)
     }
 

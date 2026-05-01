@@ -8,7 +8,7 @@ struct MicrophonePermissionView: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "mic.fill",
+            iconImageName: "Microphone",
             iconColor: .biteBlue,
             title: "Enable microphone",
             subtitle: "Log meals and chat with Coach using your voice — fastest way to track on the go.",

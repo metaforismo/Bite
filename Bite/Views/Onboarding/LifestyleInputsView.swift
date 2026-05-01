@@ -29,7 +29,7 @@ struct LifestyleInputsView: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "heart.text.square.fill",
+            iconImageName: "Lifestyle",
             iconColor: .bitePurple,
             title: "Lifestyle inputs",
             subtitle: "These help Bite estimate your biological age and shape recovery insights. Skip anything you'd rather not share.",

@@ -4,35 +4,50 @@ struct InsightCard: View {
     let title: String
     let message: String
     let onTapViewMore: () -> Void
+    var heroImageName: String? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.biteRed)
-                Text(title)
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(.biteInk)
-            }
-            Text(message)
-                .font(.system(size: 13.5, weight: .medium))
-                .foregroundStyle(.biteInk.opacity(0.86))
-                .fixedSize(horizontal: false, vertical: true)
-            Button(action: onTapViewMore) {
-                HStack(spacing: 4) {
-                    Text("View full analysis")
-                        .font(.system(size: 12.5, weight: .bold))
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .bold))
+        ZStack(alignment: .trailing) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.biteRed)
+                    Text(title)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.biteInk)
                 }
-                .foregroundStyle(.biteRed)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(.biteRedTint, in: Capsule())
+                Text(message)
+                    .font(.system(size: 13.5, weight: .medium))
+                    .foregroundStyle(.biteInk.opacity(0.86))
+                    .fixedSize(horizontal: false, vertical: true)
+                Button(action: onTapViewMore) {
+                    HStack(spacing: 4) {
+                        Text("View full analysis")
+                            .font(.system(size: 12.5, weight: .bold))
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .foregroundStyle(.biteRed)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(.biteRedTint, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 6)
             }
-            .buttonStyle(.plain)
-            .padding(.top, 6)
+            // Reserve room on the right for the hero illustration so the
+            // text doesn't underflow it.
+            .padding(.trailing, heroImageName == nil ? 0 : 100)
+
+            if let heroImageName {
+                Image(heroImageName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 120, height: 120)
+                    .offset(x: 8, y: 0)
+                    .allowsHitTesting(false)
+            }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

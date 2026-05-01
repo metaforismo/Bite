@@ -16,7 +16,7 @@ struct HealthKitView: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "heart.fill",
+            iconImageName: "Heart",
             iconColor: .biteRed,
             title: "Connect Apple Health",
             subtitle: "Bite reads sleep, heart rate, weight, and more — and writes your nutrition back so everything stays in sync.",

@@ -9,25 +9,27 @@ struct BiologyView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                header
-                BiologicalAgeCard(onRefresh: refreshBioAge)
-                BioAgeBreakdownList()
-                BioAgeChart3D()
-                Text("BIOMARKERS")
-                    .font(.system(size: 12, weight: .bold))
-                    .tracking(0.6)
-                    .foregroundStyle(.biteInkMuted)
-                    .padding(.leading, 4)
-                    .padding(.top, 6)
-                if biomarkers.isEmpty {
-                    emptyState
-                } else {
-                    biomarkerGroups
+                BiteTopBar(onBack: nil) { EmptyView() }
+                Group {
+                    header
+                    BiologicalAgeCard(onRefresh: refreshBioAge)
+                    BioAgeBreakdownList()
+                    BioAgeChart3D()
+                    Text("BIOMARKERS")
+                        .font(.system(size: 12, weight: .bold))
+                        .tracking(0.6)
+                        .foregroundStyle(.biteInkMuted)
+                        .padding(.leading, 4)
+                        .padding(.top, 6)
+                    if biomarkers.isEmpty {
+                        emptyState
+                    } else {
+                        biomarkerGroups
+                    }
                 }
+                .padding(.horizontal, 20)
             }
-            .padding(.top, 56)
             .padding(.bottom, BiteTheme.bottomFloatingClearance + 56)
-            .padding(.horizontal, 20)
         }
         .scrollIndicators(.hidden)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

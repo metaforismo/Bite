@@ -6,7 +6,7 @@ struct SleepTargetView: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "moon.zzz.fill",
+            iconImageName: "Sleep",
             iconColor: .biteRingSleep,
             title: "Set your sleep targets",
             subtitle: "Bite uses these to time your Smart Alarm and to score your recovery."

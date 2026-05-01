@@ -11,12 +11,13 @@ struct JournalView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
+                BiteTopBar(onBack: nil) { EmptyView() }
+
                 Text("Journal")
                     .font(.system(size: 30, weight: .heavy))
                     .tracking(-1)
                     .foregroundStyle(.biteInk)
                     .padding(.horizontal, 20)
-                    .padding(.top, 8)
 
                 Picker("", selection: $tab) {
                     Text("Diary").tag(Tab.diary)
@@ -33,7 +34,6 @@ struct JournalView: View {
                         .padding(.horizontal, 20)
                 }
             }
-            .padding(.top, 56)
             .padding(.bottom, BiteTheme.bottomFloatingClearance + 56)
         }
         .scrollIndicators(.hidden)

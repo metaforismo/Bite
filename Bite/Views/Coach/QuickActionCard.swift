@@ -29,7 +29,8 @@ struct QuickActionCard: View {
                     Text(title)
                         .font(.system(size: 14, weight: .heavy))
                         .foregroundStyle(.biteInk)
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(subtitle)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.biteInkMuted)
@@ -38,9 +39,9 @@ struct QuickActionCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(12)
-            .frame(width: 200, height: 76)
-            .background(
-                Color.white.opacity(0.92),
+            .frame(width: 240, height: 88)
+            .glassEffect(
+                .regular.interactive(),
                 in: RoundedRectangle(cornerRadius: 18, style: .continuous)
             )
             .overlay(

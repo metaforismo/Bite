@@ -12,7 +12,7 @@ struct StrengthExperienceView: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "dumbbell.fill",
+            iconImageName: "Strength",
             iconColor: .biteRedDeep,
             title: "Strength training experience",
             subtitle: "Bite will scale rest timers and exercise suggestions to your level."

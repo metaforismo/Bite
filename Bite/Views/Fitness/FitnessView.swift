@@ -9,16 +9,18 @@ struct FitnessView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                header
-                if workouts.isEmpty {
-                    emptyState
-                } else {
-                    workoutList
+                BiteTopBar(onBack: nil) { EmptyView() }
+                Group {
+                    header
+                    if workouts.isEmpty {
+                        emptyState
+                    } else {
+                        workoutList
+                    }
                 }
+                .padding(.horizontal, 20)
             }
-            .padding(.top, 56)
             .padding(.bottom, BiteTheme.bottomFloatingClearance + 56)
-            .padding(.horizontal, 20)
         }
         .scrollIndicators(.hidden)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

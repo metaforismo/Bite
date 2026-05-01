@@ -47,9 +47,10 @@ struct CycleCard: View {
 
     private var header: some View {
         HStack {
-            Image(systemName: "calendar.badge.clock")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.biteRedSoft)
+            Image("CycleCalendarMinimal")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 20, height: 20)
             Text("CYCLE")
                 .font(.system(size: 12, weight: .bold))
                 .tracking(0.6)

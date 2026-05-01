@@ -8,7 +8,7 @@ struct NotificationsPermissionView: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "bell.badge.fill",
+            iconImageName: "Notifications",
             iconColor: .biteOrange,
             title: "Enable notifications",
             subtitle: "Bite sends gentle reminders so you don't forget to log meals or check on your goals.",

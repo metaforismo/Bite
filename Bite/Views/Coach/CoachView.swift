@@ -85,7 +85,7 @@ struct CoachView: View {
                             width: BiteTheme.topBarButtonSize,
                             height: BiteTheme.topBarButtonSize
                         )
-                        .background(.ultraThinMaterial, in: Circle())
+                        .glassEffect(.regular.tint(.white.opacity(0.4)).interactive(), in: .circle)
                         .overlay(Circle().stroke(Color.black.opacity(0.06), lineWidth: 1))
                 }
                 .buttonStyle(.plain)
@@ -102,7 +102,7 @@ struct CoachView: View {
                 width: BiteTheme.topBarButtonSize,
                 height: BiteTheme.topBarButtonSize
             )
-            .background(.ultraThinMaterial, in: Circle())
+            .glassEffect(.regular.tint(.white.opacity(0.4)).interactive(), in: .circle)
             .overlay(Circle().stroke(Color.black.opacity(0.06), lineWidth: 1))
             .overlay(alignment: .topTrailing) {
                 if threadCount > 0 {

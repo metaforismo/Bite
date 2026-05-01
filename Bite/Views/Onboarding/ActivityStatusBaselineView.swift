@@ -12,7 +12,7 @@ struct ActivityStatusBaselineView: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "bolt.fill",
+            iconImageName: "BoltEnergy",
             iconColor: .biteRingRecovery,
             title: "How are you starting?",
             subtitle: "Bite adapts coaching when you're sick, injured, or taking a break. You can change this anytime."

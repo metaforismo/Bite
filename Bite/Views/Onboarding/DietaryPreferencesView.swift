@@ -12,7 +12,7 @@ struct DietaryPreferencesView: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "leaf.fill",
+            iconImageName: "DietaryLeaf",
             iconColor: .biteFiber,
             title: "How do you eat?",
             subtitle: "Pick everything that applies. Bite tailors meal suggestions and nutrition coaching to your style.",

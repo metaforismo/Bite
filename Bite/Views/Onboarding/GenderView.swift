@@ -6,7 +6,7 @@ struct GenderView: View {
 
     var body: some View {
         OnboardingScaffold(
-            iconSystemName: "person.2.fill",
+            iconImageName: "Gender",
             iconColor: .biteBlue,
             title: "What's your gender?",
             subtitle: "Used to estimate your daily calorie need.",
