@@ -80,6 +80,8 @@ struct TodayView: View {
                 mealsSection
                 macroDonutSection
                 hydrationStreakSection
+                dailyReviewSection
+                documentUploadSection
                 upNextSection
             }
             .padding(.top, BiteTheme.deviceSafeAreaTop)
@@ -397,6 +399,86 @@ struct TodayView: View {
     private var upNextSection: some View {
         UpNextCard(items: [])
             .padding(.horizontal, 20)
+    }
+
+    /// Daily review CTA — opens Coach with a prefilled "How did today go?"
+    /// prompt so the user gets a structured walkthrough on demand.
+    private var dailyReviewSection: some View {
+        Button {
+            BiteHaptics.impact(.light)
+            router.openChat(prefill: "How did today go? Walk me through my nutrition, recovery, and what to focus on tomorrow.")
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(LinearGradient(colors: [Color(hex: 0x7C6BD9), Color(hex: 0x5B4DC9)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 16, weight: .heavy))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 40, height: 40)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Daily review with Bite")
+                        .font(.system(size: 14, weight: .heavy))
+                        .foregroundStyle(.biteInk)
+                    Text("Get a quick read on today and what to do tomorrow")
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(.biteInkMuted)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.biteInkFaint)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.black.opacity(0.06), lineWidth: 1))
+        }
+        .buttonStyle(PressableScaleButtonStyle(pressedScale: 0.97))
+        .padding(.horizontal, 20)
+    }
+
+    /// Document upload entry — drives the "throw any health document at
+    /// Bite" loop. Opens Coach with the file picker pre-launched.
+    private var documentUploadSection: some View {
+        Button {
+            BiteHaptics.impact(.light)
+            router.openChat(thenPlus: true)
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color(hex: 0xF4A532).opacity(0.15))
+                    Image(systemName: "doc.badge.plus")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Color(hex: 0xF4A532))
+                }
+                .frame(width: 40, height: 40)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Upload a health document")
+                        .font(.system(size: 14, weight: .heavy))
+                        .foregroundStyle(.biteInk)
+                    Text("Lab PDF, prescription, photo — Bite reads it")
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(.biteInkMuted)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.biteInkFaint)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.black.opacity(0.06), lineWidth: 1))
+        }
+        .buttonStyle(PressableScaleButtonStyle(pressedScale: 0.97))
+        .padding(.horizontal, 20)
     }
 
     // MARK: Data

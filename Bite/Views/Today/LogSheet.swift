@@ -74,9 +74,19 @@ struct LogSheet: View {
                 }
             ),
             Row(
+                icon: "doc.badge.plus",
+                title: "Upload document",
+                subtitle: "Lab PDF, prescription, photo — Coach analyzes it",
+                tint: .biteRingSleep,
+                action: {
+                    router.closeLogSheet()
+                    router.openChat(thenPlus: true)
+                }
+            ),
+            Row(
                 icon: "folder.fill",
                 title: "Files & lab reports",
-                subtitle: "Attach docs, photos, or labs",
+                subtitle: "Browse what you've uploaded",
                 tint: .biteInkMuted,
                 action: { router.closeLogSheet(); router.openFiles() }
             ),
