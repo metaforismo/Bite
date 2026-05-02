@@ -12,6 +12,9 @@ struct BiologyView: View {
                 BiteTopBar(onBack: nil) { EmptyView() }
                 Group {
                     header
+                    if !biomarkers.isEmpty {
+                        bioAgeOrbit
+                    }
                     BiologicalAgeCard(onRefresh: refreshBioAge)
                     BioAgeBreakdownList()
                     BioAgeChart3D()
@@ -35,6 +38,51 @@ struct BiologyView: View {
         .scrollIndicators(.hidden)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(.container, edges: .top)
+    }
+
+    /// Marquee biomarker orbit. Each marker becomes a tiny indicator at
+    /// its evenly-spaced angle, color-coded by status (in-range green,
+    /// out-of-range red). Center shows the count of markers tracked.
+    /// Uses the biology palette (purple/cosmic) so it stands apart from
+    /// nutrition/sleep dials elsewhere.
+    private var bioAgeOrbit: some View {
+        let unique = Array(biomarkers.prefix(24))
+        let indicators: [DialIndicator] = unique.enumerated().map { idx, marker in
+            DialIndicator(
+                angle: Double(idx) / Double(max(1, unique.count)) * 360.0,
+                color: statusColor(marker.status),
+                size: 12,
+                inset: 12,
+                systemImage: nil,
+                glow: marker.status != .inRange
+            )
+        }
+        let inRangeCount = biomarkers.filter { $0.status == .inRange }.count
+
+        return OrbitDial(
+            theme: .biology,
+            arcs: [],
+            indicators: indicators
+        ) {
+            VStack(spacing: 2) {
+                Text("\(biomarkers.count)")
+                    .font(.system(size: 38, weight: .heavy))
+                    .tracking(-1)
+                    .foregroundStyle(.white)
+                    .monospacedDigit()
+                Text("biomarkers")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.7))
+                Text("\(inRangeCount) in range")
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(0.4)
+                    .foregroundStyle(Color(hex: 0x9C7BFF))
+                    .padding(.top, 4)
+            }
+        }
+        .frame(maxWidth: 280, maxHeight: 280)
+        .padding(.vertical, 8)
+        .askCoachContext("Walk me through my biomarker panel — anything I should look at?")
     }
 
     private var header: some View {
