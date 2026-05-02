@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct LabReportPayload: Decodable, Sendable {
     let title: String
@@ -23,7 +24,10 @@ struct LabReportPayload: Decodable, Sendable {
 struct LabReportCard: View {
     let artifact: ArtifactMessage
 
+    @Environment(BiteRouter.self) private var router
+    @Environment(\.modelContext) private var modelContext
     @State private var payload: LabReportPayload?
+    @State private var saved: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -71,6 +75,9 @@ struct LabReportCard: View {
                 ConfidenceBadge(value: p.confidence)
             }
 
+            // Quick at-a-glance count of in-range / out-of-range markers.
+            statusSummary(for: p.biomarkers)
+
             if let summary = p.summary {
                 Text(summary)
                     .font(.system(size: 13.5, weight: .medium))
@@ -107,7 +114,89 @@ struct LabReportCard: View {
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(hex: 0xFFF7E8), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+            actionFooter(for: p)
         }
+    }
+
+    private func statusSummary(for items: [LabReportPayload.Item]) -> some View {
+        let inRange = items.filter { $0.status == "in_range" }.count
+        let outOfRange = items.filter { $0.status == "high" || $0.status == "low" }.count
+        return HStack(spacing: 10) {
+            statusPill(count: inRange, label: "in range", color: .biteRingRecovery)
+            if outOfRange > 0 {
+                statusPill(count: outOfRange, label: "out of range", color: .biteRed)
+            }
+            Spacer()
+        }
+    }
+
+    private func statusPill(count: Int, label: String, color: Color) -> some View {
+        HStack(spacing: 5) {
+            Circle().fill(color).frame(width: 7, height: 7)
+            Text("\(count)")
+                .font(.system(size: 13, weight: .heavy))
+                .foregroundStyle(.biteInk)
+                .monospacedDigit()
+            Text(label)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.biteInkMuted)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(color.opacity(0.10), in: Capsule())
+    }
+
+    private func actionFooter(for p: LabReportPayload) -> some View {
+        HStack(spacing: 8) {
+            Button(action: { askFollowUp(p) }) {
+                HStack(spacing: 5) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 11, weight: .heavy))
+                    Text("Ask follow-up")
+                        .font(.system(size: 12.5, weight: .bold))
+                }
+                .foregroundStyle(.biteInk)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+            }
+            .background(Color.white, in: Capsule())
+            .overlay(Capsule().stroke(Color.black.opacity(0.07), lineWidth: 1))
+            .buttonStyle(.plain)
+
+            Button(action: { saveToHealthRecords(p) }) {
+                HStack(spacing: 5) {
+                    Image(systemName: saved ? "checkmark.circle.fill" : "square.and.arrow.down")
+                        .font(.system(size: 11, weight: .heavy))
+                    Text(saved ? "Saved" : "Save report")
+                        .font(.system(size: 12.5, weight: .bold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+            }
+            .background(.biteInk, in: Capsule())
+            .buttonStyle(.plain)
+            .disabled(saved)
+        }
+    }
+
+    private func askFollowUp(_ p: LabReportPayload) {
+        BiteHaptics.impact(.light)
+        let prefill = "Tell me more about this lab report — what should I focus on, and what habits would help?"
+        router.prefilledChatPrompt = prefill
+    }
+
+    private func saveToHealthRecords(_ p: LabReportPayload) {
+        BiteHaptics.impact(.light)
+        let report = LabReport(
+            title: p.title,
+            takenAt: p.takenAt ?? Date(),
+            confidence: p.confidence
+        )
+        modelContext.insert(report)
+        try? modelContext.save()
+        saved = true
     }
 
     private func biomarkerGroups(_ items: [LabReportPayload.Item]) -> some View {
