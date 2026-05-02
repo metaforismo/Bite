@@ -168,6 +168,9 @@ final class CoachToolDispatcher {
             formatter.formatOptions = [.withFullDate]
             let date = formatter.date(from: r.date) ?? Date()
             return mirrorCycleEntry(date: date, flowLevel: r.flowLevel, symptoms: r.symptoms)
+        case "addWeightEntry":
+            guard let r = try? decoder.decode(WeightResult.self, from: data) else { return nil }
+            return mirrorWeight(weightKg: r.weightKg, recordedAt: Date(timeIntervalSince1970: r.recordedAt / 1000))
         default:
             return nil
         }
@@ -192,5 +195,10 @@ final class CoachToolDispatcher {
         let date: String
         let flowLevel: Int
         let symptoms: [String]
+    }
+
+    private struct WeightResult: Decodable {
+        let weightKg: Double
+        let recordedAt: Double
     }
 }
