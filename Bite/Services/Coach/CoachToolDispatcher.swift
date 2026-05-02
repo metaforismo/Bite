@@ -112,6 +112,35 @@ final class CoachToolDispatcher {
         )
     }
 
+    // MARK: - Cycle
+
+    @discardableResult
+    func mirrorCycleEntry(date: Date, flowLevel: Int, symptoms: [String]) -> CoachToolReceipt {
+        let day = Calendar.current.startOfDay(for: date)
+        let entry = SDCycleEntry(
+            date: day,
+            flowLevel: flowLevel,
+            symptoms: symptoms,
+            source: "manual"
+        )
+        BiteModelContainer.shared.mainContext.insert(entry)
+        try? BiteModelContainer.shared.mainContext.save()
+
+        let flowLabel: String
+        switch flowLevel {
+        case 0:  flowLabel = "no flow"
+        case 1:  flowLabel = "light"
+        case 2:  flowLabel = "medium"
+        default: flowLabel = "heavy"
+        }
+        return CoachToolReceipt(
+            kind: .cycleEntryAdded,
+            entryId: entry.id,
+            affectedTab: .biology,
+            summary: "Cycle: \(flowLabel)\(symptoms.isEmpty ? "" : " · \(symptoms.count) symptoms")"
+        )
+    }
+
     // MARK: - Tool result router
 
     /// Decode a `tool_result` SSE event by name and dispatch to the right
@@ -132,6 +161,13 @@ final class CoachToolDispatcher {
             guard let r = try? decoder.decode(ActivityStatusResult.self, from: data) else { return nil }
             let kind = ActivityStatusKind(rawValue: r.kind == "on_break" ? "onBreak" : r.kind) ?? .active
             return mirrorActivityStatus(kind: kind, startedAt: Date(timeIntervalSince1970: r.startedAt / 1000), note: r.note)
+        case "addCycleEntry":
+            guard let r = try? decoder.decode(CycleResult.self, from: data) else { return nil }
+            // Worker emits ISO date "YYYY-MM-DD"; parse defensively.
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withFullDate]
+            let date = formatter.date(from: r.date) ?? Date()
+            return mirrorCycleEntry(date: date, flowLevel: r.flowLevel, symptoms: r.symptoms)
         default:
             return nil
         }
@@ -150,5 +186,11 @@ final class CoachToolDispatcher {
         let kind: String
         let startedAt: Double
         let note: String?
+    }
+
+    private struct CycleResult: Decodable {
+        let date: String
+        let flowLevel: Int
+        let symptoms: [String]
     }
 }
