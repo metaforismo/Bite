@@ -6,6 +6,7 @@ import SwiftUI
 /// (e.g., cycle tracking only when gender == female) without shifting indices.
 enum OnboardingPage: Hashable, CaseIterable {
     case welcome
+    case howItWorks
     case healthKit
     case notifications
     case microphone

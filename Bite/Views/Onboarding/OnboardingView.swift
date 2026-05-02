@@ -72,6 +72,8 @@ struct OnboardingView: View {
             switch vm.currentPageIdentifier {
             case .welcome:
                 WelcomeView { vm.nextPage() }
+            case .howItWorks:
+                HowItWorksView { vm.nextPage() }
             case .healthKit:
                 HealthKitView(
                     onContinue: { vm.nextPage() },
