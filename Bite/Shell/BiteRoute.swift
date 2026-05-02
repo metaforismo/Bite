@@ -50,6 +50,10 @@ final class BiteRouter {
     var logSheetOpen: Bool = false
     var healthRecordsSheetOpen: Bool = false
     var prefilledChatPrompt: String?
+    /// When set, CoachView immediately sends this message in a new turn
+    /// instead of waiting for the user to tap Send. Used by file uploads
+    /// to kick off analysis automatically. Cleared after consumption.
+    var autoSendChatMessage: String?
     var modalSheet: ModalSheet?
     var activeWorkoutSession: WorkoutSessionContext?
 

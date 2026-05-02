@@ -65,6 +65,15 @@ struct CoachView: View {
         .onChange(of: router.prefilledChatPrompt) { _, value in
             if let value, !value.isEmpty { input = value }
         }
+        .onChange(of: router.autoSendChatMessage) { _, value in
+            if let value, !value.isEmpty {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(120))
+                    chat?.send(value)
+                    router.autoSendChatMessage = nil
+                }
+            }
+        }
     }
 
     private var header: some View {

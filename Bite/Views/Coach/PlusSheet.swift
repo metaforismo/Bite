@@ -222,7 +222,10 @@ struct PlusSheet: View {
                 let file = try await svc.upload(data: data, kind: kind, displayName: displayName, in: modelContext)
                 _ = try await svc.analyze(fileId: file.id)
                 router.closePlusSheet()
-                router.prefilledChatPrompt = "Analyze the file I just uploaded."
+                // Auto-send so Coach starts reading immediately — no extra
+                // tap needed. The user sees thinking_step events streaming
+                // as the worker parses, then the lab_report artifact lands.
+                router.autoSendChatMessage = "Read and explain \(displayName) — what should I know about it?"
             } catch {
                 self.error = error.localizedDescription
             }
