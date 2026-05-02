@@ -18,6 +18,7 @@ struct ActivityStatusSheet: View {
     var body: some View {
         ModalSheetContainer(title: "Activity Status", onClose: { router.closeModal() }) {
             VStack(spacing: 16) {
+                statusOrb
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 14) {
                         choiceList
@@ -25,7 +26,7 @@ struct ActivityStatusSheet: View {
                         noteField
                     }
                 }
-                .frame(maxHeight: 380)
+                .frame(maxHeight: 320)
 
                 saveButton
             }
@@ -33,6 +34,52 @@ struct ActivityStatusSheet: View {
             .padding(.top, 4)
             .padding(.bottom, 24)
             .onAppear { hydrate() }
+        }
+    }
+
+    /// Big visual hero — current status as a glowing orb with day-streak
+    /// counter underneath. Replaces the form-y top of the modal with the
+    /// dial-style language used elsewhere.
+    private var statusOrb: some View {
+        let tint = orbTint(for: selected)
+        let days = Calendar.current.dateComponents([.day], from: startedAt, to: Date()).day ?? 0
+
+        return VStack(spacing: 8) {
+            ZStack {
+                Circle()
+                    .fill(tint.opacity(0.18))
+                    .frame(width: 132, height: 132)
+                    .blur(radius: 14)
+                Circle()
+                    .stroke(tint.opacity(0.45), lineWidth: 2)
+                    .frame(width: 100, height: 100)
+                Circle()
+                    .fill(tint)
+                    .frame(width: 80, height: 80)
+                    .shadow(color: tint.opacity(0.45), radius: 16, x: 0, y: 4)
+                Image(systemName: selected.icon)
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+            .frame(height: 132)
+
+            Text(selected.displayName)
+                .font(.system(size: 18, weight: .heavy))
+                .foregroundStyle(.biteInk)
+            Text(days == 0 ? "Today" : "Day \(days + 1)")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.biteInkMuted)
+        }
+        .padding(.top, 8)
+        .animation(.spring(response: 0.34, dampingFraction: 0.78), value: selected)
+    }
+
+    private func orbTint(for kind: ActivityStatusKind) -> Color {
+        switch kind {
+        case .active:   return .biteRingRecovery
+        case .sick:     return .biteWarning
+        case .injured:  return .biteOrange
+        case .onBreak:  return .biteInkMuted
         }
     }
 
