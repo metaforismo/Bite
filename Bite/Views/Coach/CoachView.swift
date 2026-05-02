@@ -211,23 +211,25 @@ struct CoachView: View {
     private var quickActions: some View {
         Group {
             if chat?.mode == .idle || chat == nil {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(Self.quickActionItems, id: \.title) { item in
-                            QuickActionCard(
-                                systemImage: item.icon,
-                                iconColor: item.color,
-                                title: item.title,
-                                subtitle: item.subtitle
-                            ) {
-                                input = item.prefill
-                                inputFocused = true
+                GlassEffectContainer(spacing: 6) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(Self.quickActionItems, id: \.title) { item in
+                                QuickActionCard(
+                                    systemImage: item.icon,
+                                    iconColor: item.color,
+                                    title: item.title,
+                                    subtitle: item.subtitle
+                                ) {
+                                    input = item.prefill
+                                    inputFocused = true
+                                }
                             }
                         }
+                        .padding(.horizontal, 16)
                     }
-                    .padding(.horizontal, 16)
                 }
-                .padding(.bottom, 12)
+                .padding(.bottom, 8)
             }
         }
     }
