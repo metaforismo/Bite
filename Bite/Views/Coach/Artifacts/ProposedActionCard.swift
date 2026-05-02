@@ -14,6 +14,9 @@ struct ProposedActionCard: View {
     @State private var phase: Phase = .pending
     @State private var receipt: CoachToolReceipt?
     @State private var decoded: FoodCartPayload?
+    @State private var editing: Bool = false
+    @State private var correctionText: String = ""
+    @FocusState private var correctionFocused: Bool
 
     private enum Phase: Equatable {
         case pending
@@ -40,7 +43,11 @@ struct ProposedActionCard: View {
 
             switch phase {
             case .pending:
-                actionFooter
+                if editing {
+                    inlineCorrectionEditor
+                } else {
+                    actionFooter
+                }
             case .confirmed:
                 confirmedFooter
             case .discarded:
@@ -50,6 +57,66 @@ struct ProposedActionCard: View {
         .onAppear(perform: decodePayload)
         .onChange(of: artifact.version) { _, _ in decodePayload() }
         .animation(BiteMotion.routeSheet, value: phase)
+        .animation(BiteMotion.routeSheet, value: editing)
+    }
+
+    /// Inline TextEditor for correcting a proposed entry. Tapping
+    /// "Re-estimate" calls the Coach with a structured correction
+    /// prompt referencing the artifact id; cancel returns to the
+    /// action footer without sending anything.
+    private var inlineCorrectionEditor: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("WHAT SHOULD CHANGE?")
+                .font(.system(size: 10, weight: .bold))
+                .tracking(0.5)
+                .foregroundStyle(.biteInkFaint)
+
+            ZStack(alignment: .topLeading) {
+                if correctionText.isEmpty {
+                    Text("e.g. \"actually 300g\", \"half a portion\", \"whole milk\"")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.biteInkFaint)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                }
+                TextEditor(text: $correctionText)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.biteInk)
+                    .scrollContentBackground(.hidden)
+                    .frame(minHeight: 56, maxHeight: 96)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .focused($correctionFocused)
+            }
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Color.black.opacity(0.07), lineWidth: 1))
+
+            HStack(spacing: 8) {
+                Button(action: cancelEdit) {
+                    Text("Cancel")
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundStyle(.biteInkMuted)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                }
+                .background(Color.white, in: Capsule())
+                .overlay(Capsule().stroke(Color.black.opacity(0.07), lineWidth: 1))
+                .buttonStyle(.plain)
+
+                Button(action: submitCorrection) {
+                    Text("Re-estimate")
+                        .font(.system(size: 12.5, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                }
+                .background(.biteInk, in: Capsule())
+                .buttonStyle(.plain)
+                .disabled(correctionText.trimmingCharacters(in: .whitespaces).isEmpty)
+                .opacity(correctionText.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
+            }
+        }
+        .onAppear { correctionFocused = true }
     }
 
     // MARK: - Footers
@@ -149,10 +216,25 @@ struct ProposedActionCard: View {
 
     private func edit() {
         BiteHaptics.selection()
-        // Pre-fill the composer with a correction prompt the user can finish.
-        // The Coach call to `correctFoodEntry` will re-emit the same artifact
-        // at version+1, which `decodePayload` re-mirrors automatically.
-        router.prefilledChatPrompt = "Correct: "
+        editing = true
+    }
+
+    private func cancelEdit() {
+        BiteHaptics.selection()
+        correctionText = ""
+        editing = false
+    }
+
+    private func submitCorrection() {
+        let text = correctionText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        BiteHaptics.impact(.light)
+        // Forward to Coach via prefilled prompt referencing the artifact id.
+        // The worker's correctFoodEntry tool re-emits the same artifact id
+        // at version+1, which `decodePayload` automatically remirrors.
+        router.prefilledChatPrompt = "correct food/\(artifact.id.uuidString.lowercased()): \(text)"
+        correctionText = ""
+        editing = false
     }
 
     private func discard() {
