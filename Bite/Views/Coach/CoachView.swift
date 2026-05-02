@@ -177,9 +177,19 @@ struct CoachView: View {
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.biteRed)
                 }
+                if let receipt = chat.lastInlineReceipt {
+                    InlineReceiptChip(receipt: receipt) {
+                        BiteHaptics.impact(.light)
+                        router.recordToolReceipt(receipt)
+                        router.revealLastReceipt()
+                        chat.lastInlineReceipt = nil
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
             .animation(BiteMotion.bubbleRise, value: chat.streamingText)
             .animation(BiteMotion.bubbleRise, value: chat.thinkingSteps.count)
+            .animation(BiteMotion.bubbleRise, value: chat.lastInlineReceipt?.timestamp)
         }
     }
 
