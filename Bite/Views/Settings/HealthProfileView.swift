@@ -46,7 +46,7 @@ struct HealthProfileView: View {
                 }
 
                 HStack {
-                    Label("Peso", systemImage: "scalemass")
+                    Label("Weight", systemImage: "scalemass")
                     Spacer()
                     TextField("—", text: Binding(
                         get: { vm.draftProfile.weightKg.map { String(format: "%.1f", $0) } ?? "" },

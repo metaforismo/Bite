@@ -298,14 +298,14 @@ struct DiaryView: View {
                     .frame(width: 36, height: 36)
             }
             .glassEffect(.regular, in: .circle)
-            .confirmationDialog("Aggiungi foto", isPresented: $showCameraConfirmation) {
+            .confirmationDialog("Add photo", isPresented: $showCameraConfirmation) {
                 Button("Scatta foto") {
                     showCamera = true
                 }
                 Button("Scegli dalla galleria") {
                     showPhotoPicker = true
                 }
-                Button("Annulla", role: .cancel) {}
+                Button("Cancel", role: .cancel) {}
             }
 
             // Bookmark button
@@ -331,7 +331,7 @@ struct DiaryView: View {
 
                 Spacer()
 
-                Button("Annulla") {
+                Button("Cancel") {
                     vm.undoDelete()
                 }
                 .font(.subheadline.weight(.semibold))

@@ -34,10 +34,10 @@ struct ManualNutritionEditView: View {
                 }
 
                 Section("Macronutrienti") {
-                    numberRow(label: "Calorie", value: $calories, unit: "kcal")
-                    numberRow(label: "Proteine", value: $protein, unit: "g")
-                    numberRow(label: "Carboidrati", value: $carbs, unit: "g")
-                    numberRow(label: "Grassi", value: $fat, unit: "g")
+                    numberRow(label: "Calories", value: $calories, unit: "kcal")
+                    numberRow(label: "Protein", value: $protein, unit: "g")
+                    numberRow(label: "Carbs", value: $carbs, unit: "g")
+                    numberRow(label: "Fat", value: $fat, unit: "g")
                 }
 
                 Section("Micronutrienti") {
@@ -50,7 +50,7 @@ struct ManualNutritionEditView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annulla") { dismiss() }
+                    Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Salva") {

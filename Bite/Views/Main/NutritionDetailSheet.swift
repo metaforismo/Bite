@@ -191,9 +191,9 @@ struct NutritionDetailSheet: View {
 
             // Macros row
             HStack(spacing: 0) {
-                macroItem(value: nutrition.protein, emoji: "\u{1F373}", label: "Proteine")
-                macroItem(value: nutrition.carbs, emoji: "\u{1F34E}", label: "Carboidrati")
-                macroItem(value: nutrition.fat, emoji: "\u{1F347}", label: "Grassi")
+                macroItem(value: nutrition.protein, emoji: "\u{1F373}", label: "Protein")
+                macroItem(value: nutrition.carbs, emoji: "\u{1F34E}", label: "Carbs")
+                macroItem(value: nutrition.fat, emoji: "\u{1F347}", label: "Fat")
             }
 
             // Micros row (if available)

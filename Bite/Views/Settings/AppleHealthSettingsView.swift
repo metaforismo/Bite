@@ -13,7 +13,7 @@ struct AppleHealthSettingsView: View {
             }
 
             Section {
-                Toggle("Calorie bruciate", isOn: Bindable(vm).draftProfile.healthReadBurnedCalories)
+                Toggle("Active calories", isOn: Bindable(vm).draftProfile.healthReadBurnedCalories)
                 Toggle("Energia a riposo", isOn: Bindable(vm).draftProfile.healthReadRestingEnergy)
                 Toggle("Passi", isOn: Bindable(vm).draftProfile.healthReadSteps)
                 Toggle("Allenamenti", isOn: Bindable(vm).draftProfile.healthReadWorkouts)

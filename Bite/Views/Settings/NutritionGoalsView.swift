@@ -39,7 +39,7 @@ struct NutritionGoalsView: View {
                 .pickerStyle(.segmented)
 
                 HStack {
-                    Label("Peso target", systemImage: "target")
+                    Label("Target weight", systemImage: "target")
                     Spacer()
                     TextField("—", text: Binding(
                         get: { vm.draftProfile.targetWeightKg.map { String(format: "%.1f", $0) } ?? "" },
@@ -109,22 +109,22 @@ struct NutritionGoalsView: View {
 
             // 5. Daily Nutrition Goals
             Section {
-                goalRow(icon: "flame.fill", label: "Calorie", value: Binding(
+                goalRow(icon: "flame.fill", label: "Calories", value: Binding(
                     get: { String(vm.draftProfile.calorieGoal) },
                     set: { vm.draftProfile.calorieGoal = Int($0) ?? vm.draftProfile.calorieGoal }
                 ), unit: "kcal", color: .biteOrange)
 
-                goalRow(icon: "p.circle.fill", label: "Proteine", value: Binding(
+                goalRow(icon: "p.circle.fill", label: "Protein", value: Binding(
                     get: { String(format: "%.0f", vm.draftProfile.proteinGoal) },
                     set: { vm.draftProfile.proteinGoal = Double($0) ?? vm.draftProfile.proteinGoal }
                 ), unit: "g", color: .biteBlue)
 
-                goalRow(icon: "c.circle.fill", label: "Carboidrati", value: Binding(
+                goalRow(icon: "c.circle.fill", label: "Carbs", value: Binding(
                     get: { String(format: "%.0f", vm.draftProfile.carbsGoal) },
                     set: { vm.draftProfile.carbsGoal = Double($0) ?? vm.draftProfile.carbsGoal }
                 ), unit: "g", color: .biteOrange)
 
-                goalRow(icon: "f.circle.fill", label: "Grassi", value: Binding(
+                goalRow(icon: "f.circle.fill", label: "Fat", value: Binding(
                     get: { String(format: "%.0f", vm.draftProfile.fatGoal) },
                     set: { vm.draftProfile.fatGoal = Double($0) ?? vm.draftProfile.fatGoal }
                 ), unit: "g", color: .biteRed)
@@ -211,14 +211,14 @@ struct NutritionGoalsView: View {
             ForEach(data, id: \.date) { point in
                 LineMark(
                     x: .value("Data", point.date),
-                    y: .value("Peso", point.weight)
+                    y: .value("Weight", point.weight)
                 )
                 .foregroundStyle(Color.biteRed)
                 .interpolationMethod(.monotone)
 
                 PointMark(
                     x: .value("Data", point.date),
-                    y: .value("Peso", point.weight)
+                    y: .value("Weight", point.weight)
                 )
                 .foregroundStyle(Color.biteRed)
             }

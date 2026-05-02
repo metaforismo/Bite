@@ -101,7 +101,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     if let weight = vm.draftProfile.weightKg {
                         HStack {
-                            Text("Peso attuale")
+                            Text("Current weight")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             Spacer()
@@ -158,7 +158,7 @@ struct SettingsView: View {
                 NavigationLink {
                     WeightTrackingView(vm: vm)
                 } label: {
-                    Label("Storico peso", systemImage: "chart.line.uptrend.xyaxis")
+                    Label("Weight history", systemImage: "chart.line.uptrend.xyaxis")
                 }
             } header: {
                 Text("Weight Tracking")
