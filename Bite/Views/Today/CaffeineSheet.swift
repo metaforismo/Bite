@@ -55,19 +55,31 @@ struct CaffeineSheet: View {
     }
 
     private var gauge: some View {
-        VStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .trim(from: 0, to: 0.75)
-                    .stroke(Color.black.opacity(0.06), style: StrokeStyle(lineWidth: 14, lineCap: .round))
-                    .rotationEffect(.degrees(135))
+        let intakeIndicators: [DialIndicator] = todayDrinks.prefix(20).map { drink in
+            DialIndicator(
+                angle: DialClock.angle(forHour: hour(of: drink.timestamp)),
+                color: .biteCarbs,
+                size: 11,
+                inset: 12,
+                systemImage: nil,
+                glow: false
+            )
+        }
 
-                Circle()
-                    .trim(from: 0, to: min(0.75, 0.75 * fillRatio))
-                    .stroke(arcStyle, style: StrokeStyle(lineWidth: 14, lineCap: .round))
-                    .rotationEffect(.degrees(135))
-                    .animation(.spring(response: 0.5, dampingFraction: 0.75), value: fillRatio)
+        let arc = DialArc(
+            startAngle: 0,
+            endAngle: 360 * Double(min(1.0, fillRatio)),
+            color: arcStyle,
+            width: 14,
+            inset: 14
+        )
 
+        return VStack(spacing: 8) {
+            OrbitDial(
+                theme: .activity,
+                arcs: [arc],
+                indicators: intakeIndicators
+            ) {
                 VStack(spacing: 2) {
                     Text("\(Int(totalMg))")
                         .font(.system(size: 32, weight: .heavy, design: .rounded))
@@ -78,13 +90,18 @@ struct CaffeineSheet: View {
                         .foregroundStyle(.biteInkMuted)
                 }
             }
-            .frame(width: 156, height: 156)
+            .frame(maxWidth: 240, maxHeight: 240)
 
             Text("\(Int((Double(fillRatio) * 100).rounded()))% of daily limit")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.biteInkMuted)
         }
         .padding(.top, 6)
+    }
+
+    private func hour(of date: Date) -> Double {
+        let comps = Calendar.current.dateComponents([.hour, .minute], from: date)
+        return Double(comps.hour ?? 0) + Double(comps.minute ?? 0) / 60
     }
 
     private var arcStyle: Color {
