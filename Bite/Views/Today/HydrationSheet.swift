@@ -37,7 +37,7 @@ struct HydrationSheet: View {
     var body: some View {
         ModalSheetContainer(title: "Hydration", onClose: { router.closeModal() }) {
             VStack(spacing: 18) {
-                glassPreview
+                hydrationDial
                 progressLine
                 quickAdds
                 history
@@ -48,24 +48,65 @@ struct HydrationSheet: View {
         }
     }
 
-    private var glassPreview: some View {
-        ZStack(alignment: .bottom) {
-            // Glass outline
-            UnevenRoundedRectangle(
-                topLeadingRadius: 6,
-                bottomLeadingRadius: 18,
-                bottomTrailingRadius: 18,
-                topTrailingRadius: 6,
-                style: .continuous
+    /// 24h timeline of intakes with the day's progress arc filled to
+    /// `fillRatio`. Each drink renders as a small indicator dot at its
+    /// hour. Stylized water-glass at center with fill height matching
+    /// today's progress.
+    private var hydrationDial: some View {
+        let intakeIndicators: [DialIndicator] = todayWater.prefix(20).map { drink in
+            DialIndicator(
+                angle: DialClock.angle(forHour: hour(of: drink.timestamp)),
+                color: .biteHydration,
+                size: 9,
+                inset: 12,
+                systemImage: nil,
+                glow: false
             )
-            .stroke(Color.biteHydration.opacity(0.45), lineWidth: 3)
+        }
 
-            // Fill
+        let arc = DialArc(
+            startAngle: 0,
+            endAngle: 360 * Double(fillRatio),
+            color: .biteHydration,
+            width: 14,
+            inset: 14
+        )
+
+        return OrbitDial(
+            theme: .hydration,
+            arcs: [arc],
+            indicators: intakeIndicators
+        ) {
+            VStack(spacing: 4) {
+                glass
+                    .frame(width: 56, height: 78)
+                Text("\(Int(fillRatio * 100))%")
+                    .font(.system(size: 14, weight: .heavy))
+                    .foregroundStyle(.biteHydration)
+                    .monospacedDigit()
+            }
+        }
+        .frame(maxWidth: 280, maxHeight: 280)
+        .padding(.top, 8)
+    }
+
+    /// Stylized glass-of-water that fills to today's % of goal.
+    private var glass: some View {
+        ZStack(alignment: .bottom) {
             UnevenRoundedRectangle(
                 topLeadingRadius: 4,
-                bottomLeadingRadius: 16,
-                bottomTrailingRadius: 16,
+                bottomLeadingRadius: 14,
+                bottomTrailingRadius: 14,
                 topTrailingRadius: 4,
+                style: .continuous
+            )
+            .stroke(Color.biteHydration.opacity(0.55), lineWidth: 2)
+
+            UnevenRoundedRectangle(
+                topLeadingRadius: 3,
+                bottomLeadingRadius: 12,
+                bottomTrailingRadius: 12,
+                topTrailingRadius: 3,
                 style: .continuous
             )
             .fill(
@@ -74,12 +115,15 @@ struct HydrationSheet: View {
                     startPoint: .top, endPoint: .bottom
                 )
             )
-            .frame(height: 128 * fillRatio)
-            .padding(3)
+            .frame(maxHeight: 78 * fillRatio)
+            .padding(2)
             .animation(.spring(response: 0.5, dampingFraction: 0.75), value: fillRatio)
         }
-        .frame(width: 86, height: 128)
-        .padding(.top, 8)
+    }
+
+    private func hour(of date: Date) -> Double {
+        let comps = Calendar.current.dateComponents([.hour, .minute], from: date)
+        return Double(comps.hour ?? 0) + Double(comps.minute ?? 0) / 60
     }
 
     private var progressLine: some View {
