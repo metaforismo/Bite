@@ -71,6 +71,7 @@ struct BiteApp: App {
 
                 if loaded.hasCompletedOnboarding {
                     NotificationService.shared.scheduleReminderIfNeeded()
+                    NotificationService.shared.scheduleDailyReview()
 
                     // Upgrade-from-V1 path: if the user already completed legacy
                     // onboarding (no V2 marker), show the welcome sheet once.
