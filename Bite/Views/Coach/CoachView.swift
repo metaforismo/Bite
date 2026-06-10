@@ -234,9 +234,24 @@ struct CoachView: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
                 if let error = chat.lastError, chat.mode == .error {
-                    Text("Coach error: \(error)")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.biteRed)
+                    VStack(spacing: 10) {
+                        Text(error)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.biteRed)
+                            .multilineTextAlignment(.center)
+                        if chat.canRetry {
+                            Button {
+                                BiteHaptics.impact(.light)
+                                chat.retryLastSend()
+                            } label: {
+                                Label("Retry", systemImage: "arrow.clockwise")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(.biteRed)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
                 }
                 if let receipt = chat.lastInlineReceipt {
                     InlineReceiptChip(receipt: receipt) {
