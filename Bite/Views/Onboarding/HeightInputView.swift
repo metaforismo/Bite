@@ -26,7 +26,7 @@ struct HeightInputView: View {
     }
 
     private func adjustHeight(by amount: Double) {
-        let current = Double(vm.heightCm) ?? 170
+        let current = OnboardingViewModel.parseDecimal(vm.heightCm) ?? 170
         let newValue = max(100, min(250, current + amount))
         withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
             vm.heightCm = String(format: "%.0f", newValue)

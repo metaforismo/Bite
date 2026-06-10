@@ -72,7 +72,14 @@ final class OnboardingViewModel {
     var supplementsSet: Set<String> = []
     var coachPersonality: CoachPersonality = .friend
 
+    private var isTransitioning = false
+
     private let storage = StorageService.shared
+    private static let draftKey = "onboardingDraft"
+
+    init() {
+        restoreDraft()
+    }
 
     // MARK: - Page list
 
@@ -80,6 +87,7 @@ final class OnboardingViewModel {
     var pages: [OnboardingPage] {
         var list: [OnboardingPage] = [
             .welcome,
+            .howItWorks,
             .healthKit,
             .notifications,
             .microphone,
@@ -141,11 +149,17 @@ final class OnboardingViewModel {
         }
     }
 
+    /// Parses user-typed numbers tolerantly: EU decimal keyboards produce ","
+    /// which `Double(_:)` rejects.
+    static func parseDecimal(_ value: String) -> Double? {
+        Double(value.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
+    }
+
     var suggestedCalories: Int? {
         guard let gender = gender,
               let ageValue = Int(age), ageValue > 0,
-              let height = Double(heightCm), height > 0,
-              let weight = Double(weightKg), weight > 0 else {
+              let height = Self.parseDecimal(heightCm), height > 0,
+              let weight = Self.parseDecimal(weightKg), weight > 0 else {
             return nil
         }
 
@@ -159,7 +173,16 @@ final class OnboardingViewModel {
             bmr = 10 * weight + 6.25 * height - 5 * Double(ageValue) - 78
         }
 
-        let tdee = bmr * activityLevel.multiplier * calorieBias.multiplier
+        var goalMultiplier = 1.0
+        if let target = Self.parseDecimal(targetWeightKg), target > 0 {
+            if target < weight - 1 {
+                goalMultiplier = 0.85
+            } else if target > weight + 1 {
+                goalMultiplier = 1.10
+            }
+        }
+
+        let tdee = bmr * activityLevel.multiplier * goalMultiplier * calorieBias.multiplier
         return Int(tdee.rounded())
     }
 
@@ -174,11 +197,18 @@ final class OnboardingViewModel {
     // MARK: - Navigation
 
     func nextPage() {
-        guard currentPage < pages.count - 1 else { return }
+        guard !isTransitioning, currentPage < pages.count - 1 else { return }
+        isTransitioning = true
+        clampNumericInputs()
         autoPopulateGoalsIfNeeded()
         BiteHaptics.selection()
         withAnimation(BiteMotion.onboardingPage) {
             currentPage += 1
+        }
+        saveDraft()
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            self?.isTransitioning = false
         }
     }
 
@@ -187,6 +217,35 @@ final class OnboardingViewModel {
         BiteHaptics.selection()
         withAnimation(BiteMotion.onboardingPage) {
             currentPage -= 1
+        }
+    }
+
+    /// Typed values get clamped to the same ranges the steppers enforce so a
+    /// stray "7000" never reaches the calorie formula.
+    private func clampNumericInputs() {
+        switch currentPageIdentifier {
+        case .age:
+            if let value = Int(age) {
+                let clamped = min(max(value, 16), 100)
+                if clamped != value { age = "\(clamped)" }
+            }
+        case .height:
+            if let value = Self.parseDecimal(heightCm) {
+                let clamped = min(max(value, 100), 250)
+                if clamped != value { heightCm = String(format: "%.0f", clamped) }
+            }
+        case .weight:
+            if let value = Self.parseDecimal(weightKg) {
+                let clamped = min(max(value, 30), 300)
+                if clamped != value { weightKg = String(format: "%.1f", clamped) }
+            }
+        case .targetWeight:
+            if let value = Self.parseDecimal(targetWeightKg) {
+                let clamped = min(max(value, 30), 300)
+                if clamped != value { targetWeightKg = String(format: "%.1f", clamped) }
+            }
+        default:
+            break
         }
     }
 
@@ -221,21 +280,110 @@ final class OnboardingViewModel {
         }
     }
 
+    // MARK: - Draft persistence
+
+    /// Lightweight snapshot of answered fields so a force-quit mid-flow
+    /// doesn't throw away the user's progress.
+    private struct OnboardingDraft: Codable {
+        var currentPage: Int
+        var name: String
+        var gender: Gender?
+        var age: String
+        var heightCm: String
+        var weightKg: String
+        var targetWeightKg: String
+        var activityLevel: ActivityLevel
+        var calorieBias: CalorieBias
+        var dietaryPreferences: [DietaryPreference]
+        var allergies: [String]
+        var hydrationGoalML: Double
+        var caffeineLimitMg: Double
+        var sleepTargetWakeTime: Date?
+        var sleepTargetHours: Int
+        var strengthExperience: StrengthExperience
+        var cycleTrackingEnabled: Bool
+        var activityStatusBaseline: ActivityStatusKind
+        var smokingStatus: SmokingStatus?
+        var alcoholFrequency: AlcoholFrequency?
+        var supplements: [String]
+        var coachPersonality: CoachPersonality
+    }
+
+    private func saveDraft() {
+        let draft = OnboardingDraft(
+            currentPage: currentPage,
+            name: name,
+            gender: gender,
+            age: age,
+            heightCm: heightCm,
+            weightKg: weightKg,
+            targetWeightKg: targetWeightKg,
+            activityLevel: activityLevel,
+            calorieBias: calorieBias,
+            dietaryPreferences: Array(dietaryPreferenceSet),
+            allergies: Array(allergiesSet),
+            hydrationGoalML: hydrationGoalML,
+            caffeineLimitMg: caffeineLimitMg,
+            sleepTargetWakeTime: sleepTargetWakeTime,
+            sleepTargetHours: sleepTargetHours,
+            strengthExperience: strengthExperience,
+            cycleTrackingEnabled: cycleTrackingEnabled,
+            activityStatusBaseline: activityStatusBaseline,
+            smokingStatus: smokingStatus,
+            alcoholFrequency: alcoholFrequency,
+            supplements: Array(supplementsSet),
+            coachPersonality: coachPersonality
+        )
+        guard let data = try? JSONEncoder().encode(draft) else { return }
+        UserDefaults.standard.set(data, forKey: Self.draftKey)
+    }
+
+    private func restoreDraft() {
+        guard let data = UserDefaults.standard.data(forKey: Self.draftKey),
+              let draft = try? JSONDecoder().decode(OnboardingDraft.self, from: data) else { return }
+        name = draft.name
+        gender = draft.gender
+        age = draft.age
+        heightCm = draft.heightCm
+        weightKg = draft.weightKg
+        targetWeightKg = draft.targetWeightKg
+        activityLevel = draft.activityLevel
+        calorieBias = draft.calorieBias
+        dietaryPreferenceSet = Set(draft.dietaryPreferences)
+        allergiesSet = Set(draft.allergies)
+        hydrationGoalML = draft.hydrationGoalML
+        caffeineLimitMg = draft.caffeineLimitMg
+        sleepTargetWakeTime = draft.sleepTargetWakeTime
+        sleepTargetHours = draft.sleepTargetHours
+        strengthExperience = draft.strengthExperience
+        cycleTrackingEnabled = draft.cycleTrackingEnabled
+        activityStatusBaseline = draft.activityStatusBaseline
+        smokingStatus = draft.smokingStatus
+        alcoholFrequency = draft.alcoholFrequency
+        supplementsSet = Set(draft.supplements)
+        coachPersonality = draft.coachPersonality
+        currentPage = min(max(draft.currentPage, 0), pages.count - 1)
+    }
+
+    private func clearDraft() {
+        UserDefaults.standard.removeObject(forKey: Self.draftKey)
+    }
+
     // MARK: - Completion
 
     func completeOnboarding() async -> UserProfile {
         var profile = UserProfile(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             calorieGoal: Int(calorieGoal) ?? 2000,
-            proteinGoal: Double(proteinGoal) ?? 150,
-            carbsGoal: Double(carbsGoal) ?? 250,
-            fatGoal: Double(fatGoal) ?? 65,
+            proteinGoal: Self.parseDecimal(proteinGoal) ?? 150,
+            carbsGoal: Self.parseDecimal(carbsGoal) ?? 250,
+            fatGoal: Self.parseDecimal(fatGoal) ?? 65,
             hasCompletedOnboarding: true,
             gender: gender,
             age: Int(age),
-            heightCm: Double(heightCm),
-            weightKg: Double(weightKg),
-            targetWeightKg: Double(targetWeightKg),
+            heightCm: Self.parseDecimal(heightCm),
+            weightKg: Self.parseDecimal(weightKg),
+            targetWeightKg: Self.parseDecimal(targetWeightKg),
             activityLevel: activityLevel,
             calorieBias: calorieBias
         )
@@ -256,6 +404,7 @@ final class OnboardingViewModel {
 
         storage.saveProfile(profile)
         storage.seedActivityStatusIfMissing(activityStatusBaseline)
+        clearDraft()
         return profile
     }
 }
