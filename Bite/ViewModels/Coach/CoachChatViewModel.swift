@@ -14,6 +14,9 @@ final class CoachChatViewModel {
     var streamingText: String = ""
     var isStreaming: Bool = false
     var lastError: String?
+    /// Set when a send failed and can be replayed verbatim.
+    var canRetry: Bool { pendingSend != nil }
+    private var pendingSend: (text: String, attachments: [ChatAttachmentRef], contextHint: String?)?
     var researchCitations: [ResearchCitation] = []
     var activeToolName: String?
     var recentToolActivities: [ToolActivity] = []
@@ -103,7 +106,7 @@ final class CoachChatViewModel {
             try modelContext.save()
             self.thread = local
         } catch {
-            self.lastError = error.localizedDescription
+            self.lastError = Self.friendlyErrorMessage(error)
             self.mode = .error
         }
     }
@@ -118,13 +121,21 @@ final class CoachChatViewModel {
         researchCitations.removeAll()
         activeToolName = nil
         recentToolActivities.removeAll()
+        lastError = nil
+        pendingSend = (trimmed, attachments, contextHint)
         mode = .thinking
         isStreaming = true
 
         streamTask = Task { [weak self] in
             guard let self else { return }
             await self.startNewThreadIfNeeded()
-            guard let thread = self.thread else { return }
+            guard let thread = self.thread else {
+                // Thread creation failed — startNewThreadIfNeeded already set
+                // lastError/mode. Reset the composer so the user can retry.
+                self.isStreaming = false
+                self.activeToolName = nil
+                return
+            }
 
             // Persist user message immediately.
             let userMsg = CoachMessage(role: .user, text: trimmed, thread: thread)
@@ -206,13 +217,22 @@ final class CoachChatViewModel {
                         }
                         thread.lastMessageAt = Date()
                         try? modelContext.save()
+                        if mode != .error {
+                            pendingSend = nil
+                        }
                     }
+                }
+                // Preserve a partial reply if the stream ended without `done`.
+                if !assistantText.isEmpty, assistantMessage == nil {
+                    let msg = CoachMessage(role: .assistant, text: assistantText, thread: thread)
+                    modelContext.insert(msg)
+                    try? modelContext.save()
                 }
             } catch is CancellationError {
                 // Swallow.
             } catch {
                 failActiveTool()
-                lastError = error.localizedDescription
+                lastError = Self.friendlyErrorMessage(error)
                 mode = .error
             }
 
@@ -222,12 +242,39 @@ final class CoachChatViewModel {
         }
     }
 
+    /// Replays the last failed send verbatim.
+    func retryLastSend() {
+        guard let pending = pendingSend else { return }
+        lastError = nil
+        mode = .idle
+        send(pending.text, attachments: pending.attachments, contextHint: pending.contextHint)
+    }
+
     func cancelStream() {
         streamTask?.cancel()
         streamTask = nil
         isStreaming = false
         activeToolName = nil
         mode = .idle
+    }
+
+    private static func friendlyErrorMessage(_ error: Error) -> String {
+        if let apiError = error as? BiteAPIError {
+            switch apiError {
+            case .transport:
+                return "Couldn't reach the coach. Check your connection and try again."
+            case .unauthorized, .notAuthenticated:
+                return "Your session expired. Please sign in again."
+            case .server(let status, _):
+                return "The coach server had a problem (\(status)). Please try again."
+            case .decoding, .streamMalformed, .unknown:
+                return "Something went wrong. Please try again."
+            }
+        }
+        if (error as? URLError) != nil {
+            return "Couldn't reach the coach. Check your connection and try again."
+        }
+        return "Something went wrong. Please try again."
     }
 
     private func startToolActivity(_ name: String) {
@@ -291,20 +338,42 @@ final class CoachChatViewModel {
     private static func friendlyToolLabel(_ name: String) -> String {
         switch name {
         case "research_science": return "Researching papers"
-        case "search_memories": return "Checking memory"
-        case "log_food": return "Logging food"
-        case "log_water", "log_hydration": return "Logging hydration"
-        case "log_caffeine": return "Logging caffeine"
-        case "log_activity_status": return "Updating status"
-        case "attach_lab_report": return "Reading lab file"
-        case "generate_plan": return "Building plan"
-        case "log_workout": return "Saving workout"
-        case "add_weight_entry": return "Saving weight"
+        case "searchMemories": return "Checking memory"
+        case "addMemory": return "Saving a memory"
+        case "addFoodEntry": return "Logging food"
+        case "correctFoodEntry": return "Updating the meal"
+        case "addDrink": return "Logging the drink"
+        case "setActivityStatus": return "Updating status"
+        case "addCycleEntry": return "Logging cycle data"
+        case "add_lab_report": return "Reading lab file"
+        case "get_biomarkers": return "Loading biomarkers"
+        case "proposePlan": return "Building plan"
+        case "proposeWorkout": return "Designing a workout"
+        case "completeWorkout": return "Saving workout"
+        case "addWeightEntry": return "Saving weight"
+        case "getProfile": return "Reading your profile"
+        case "getDayLog": return "Reading today's log"
+        case "getRange": return "Pulling recent history"
+        case "getHealthSnapshot": return "Reading today's vitals"
+        case "getDrinkLog": return "Reading today's drinks"
+        case "getActivityStatus": return "Checking your status"
+        case "getCycleData": return "Reading cycle data"
+        case "getCycleInsight": return "Analyzing your cycle"
+        case "analyzeImpact": return "Analyzing impact"
+        case "analyzeImpactByTag": return "Analyzing habit impact"
+        case "predict": return "Forecasting metrics"
+        case "computeBiologicalAge": return "Estimating biological age"
+        case "classifyJournalEntry": return "Tagging the journal entry"
+        case "scheduleCheckIn": return "Scheduling a check-in"
         default:
-            return name
-                .split(separator: "_")
-                .map { $0.prefix(1).uppercased() + $0.dropFirst() }
-                .joined(separator: " ")
+            let words = name
+                .replacingOccurrences(of: "_", with: " ")
+                .replacingOccurrences(
+                    of: "([a-z0-9])([A-Z])",
+                    with: "$1 $2",
+                    options: .regularExpression
+                )
+            return words.prefix(1).uppercased() + words.dropFirst().lowercased()
         }
     }
 }

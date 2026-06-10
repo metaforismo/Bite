@@ -82,6 +82,28 @@ final class BiteAPIClient: Sendable {
         }
     }
 
+    /// Authenticated raw PUT (used for the same-origin file upload proxy,
+    /// which sits behind Firebase auth like every other /v1 route).
+    func authorizedPUT(url: URL, data: Data, contentType: String) async throws {
+        func makeRequest(token: String) -> URLRequest {
+            var req = URLRequest(url: url)
+            req.httpMethod = "PUT"
+            req.setValue(contentType, forHTTPHeaderField: "Content-Type")
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            req.httpBody = data
+            return req
+        }
+        let token = try await auth.currentIDToken()
+        let (respData, response) = try await dataTask(makeRequest(token: token))
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            let newToken = try await auth.refreshIDToken()
+            let (retryData, retryResp) = try await dataTask(makeRequest(token: newToken))
+            try Self.assertSuccess(response: retryResp, data: retryData)
+            return
+        }
+        try Self.assertSuccess(response: response, data: respData)
+    }
+
     private static func assertSuccess(response: URLResponse, data: Data) throws {
         guard let http = response as? HTTPURLResponse else { throw BiteAPIError.unknown }
         guard (200..<300).contains(http.statusCode) else {
@@ -159,9 +181,10 @@ final class BiteAPIClient: Sendable {
 }
 
 extension JSONEncoder {
+    /// Wire encoder for the Bite Worker. The worker validates camelCase keys
+    /// with strict Zod schemas — keys must pass through unchanged.
     static let bite: JSONEncoder = {
         let e = JSONEncoder()
-        e.keyEncodingStrategy = .convertToSnakeCase
         e.dateEncodingStrategy = .iso8601
         return e
     }()

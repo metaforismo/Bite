@@ -64,8 +64,9 @@ export function sseResponse(
       }
     },
     cancel() {
-      // Consumer disconnected; nothing to clean up because the source
-      // generator will be garbage collected once we stop iterating.
+      // Consumer disconnected — stop the source generator so tool dispatch
+      // and DB writes don't keep running against a closed stream.
+      void source.return(undefined).catch(() => {});
     },
   });
 

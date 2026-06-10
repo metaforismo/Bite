@@ -47,7 +47,7 @@ chat.post("/chat/threads", async (c) => {
     createdAt: now,
   });
 
-  return c.json({ id, title, createdAt: now }, 201);
+  return c.json({ id, title, createdAt: now, lastMessageAt: now }, 201);
 });
 
 chat.get("/chat/threads", async (c) => {

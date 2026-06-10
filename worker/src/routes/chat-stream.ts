@@ -48,7 +48,9 @@ import { extractAndStoreMemories } from "../llm/memory";
 
 const router = new Hono<AppBindings>();
 
-const Body = z
+/** Wire contract for the chat turn body. Canonical casing is camelCase —
+ * the iOS encoder must NOT snake_case keys. Exported for contract tests. */
+export const ChatBody = z
   .object({
     text: z.string().min(1).max(20_000),
     healthSnapshot: z.record(z.unknown()).optional(),
@@ -67,8 +69,8 @@ router.post("/chat/threads/:id/messages", async (c) => {
   const uid = c.get("uid");
   if (!uid) return c.json({ error: "unauthorized" }, 401);
 
-  const threadId = c.req.param("id");
-  const body = Body.safeParse(await c.req.json().catch(() => ({})));
+  const threadId = c.req.param("id").toLowerCase();
+  const body = ChatBody.safeParse(await c.req.json().catch(() => ({})));
   if (!body.success) {
     return c.json({ error: "invalid_body", issues: body.error.issues }, 400);
   }
@@ -166,6 +168,7 @@ router.post("/chat/threads/:id/messages", async (c) => {
     tools,
     healthSnapshot: body.data.healthSnapshot as HealthSnapshot | undefined,
     memorySnippets,
+    signal: c.req.raw.signal,
   });
   return sseResponse(stream);
 });
@@ -182,6 +185,25 @@ interface RunArgs {
   tools: ReturnType<ReturnType<typeof buildRegistry>["toOpenAITools"]>;
   healthSnapshot?: HealthSnapshot;
   memorySnippets: string[];
+  signal?: AbortSignal;
+}
+
+export interface PendingToolCall {
+  id: string;
+  name: string;
+  arguments: string;
+}
+
+/** Fold a streamed tool-call delta into the per-round accumulator. */
+export function accumulateToolCallDelta(
+  map: Map<number, PendingToolCall>,
+  delta: { index: number; id?: string; name?: string; argumentsDelta?: string }
+): void {
+  const entry = map.get(delta.index) ?? { id: "", name: "", arguments: "" };
+  if (delta.id) entry.id = delta.id;
+  if (delta.name) entry.name = delta.name;
+  if (delta.argumentsDelta) entry.arguments += delta.argumentsDelta;
+  map.set(delta.index, entry);
 }
 
 async function* run(args: RunArgs): AsyncGenerator<SSEEvent, void, unknown> {
@@ -197,6 +219,7 @@ async function* run(args: RunArgs): AsyncGenerator<SSEEvent, void, unknown> {
     tools,
     healthSnapshot,
     memorySnippets,
+    signal,
   } = args;
 
   yield { type: "thread_id", data: { thread_id: threadId } };
@@ -208,34 +231,56 @@ async function* run(args: RunArgs): AsyncGenerator<SSEEvent, void, unknown> {
   const emittedArtifacts: ArtifactEmission[] = [];
   const turnTranscript: ChatMessage[] = [...conversation];
 
+  try {
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const result = await llm.chat({
-      stream: false,
+    if (signal?.aborted) return;
+
+    let roundText = "";
+    const pending = new Map<number, PendingToolCall>();
+    const chunks = llm.chat({
+      stream: true,
       messages: turnTranscript,
       tools,
       temperature: 0.4,
+      maxTokens: 4096,
+      signal,
     });
-
-    // Emit any text the model produced before the tool call.
-    if (result.content && result.content.length > 0) {
-      assistantText += result.content;
-      // Stream as a single delta — non-streaming completions deliver content
-      // in one piece; the iOS UI handles arbitrary chunk sizes.
-      yield { type: "text_delta", data: { chunk: result.content } };
+    for await (const chunk of chunks) {
+      if (chunk.delta) {
+        roundText += chunk.delta;
+        assistantText += chunk.delta;
+        yield { type: "text_delta", data: { chunk: chunk.delta } };
+      }
+      for (const tc of chunk.toolCallDeltas ?? []) {
+        accumulateToolCallDelta(pending, tc);
+      }
     }
 
-    if (!result.toolCalls || result.toolCalls.length === 0) {
+    const calls = [...pending.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, c]) => c)
+      .filter((c) => c.id && c.name);
+    if (calls.length === 0) {
       break;
     }
 
-    // Push the assistant's tool-call message into the transcript so the model
-    // sees its own request in the next round.
+    // Push the assistant's tool-call message — with `tool_calls` — into the
+    // transcript so the subsequent `tool` replies reference a real request.
     turnTranscript.push({
       role: "assistant",
-      content: result.content || "",
+      content: roundText,
+      tool_calls: calls.map((call) => ({
+        id: call.id,
+        type: "function" as const,
+        function: { name: call.name, arguments: call.arguments || "{}" },
+      })),
     });
 
-    for (const call of result.toolCalls) {
+    for (const pendingCall of calls) {
+      const call = {
+        id: pendingCall.id,
+        function: { name: pendingCall.name, arguments: pendingCall.arguments || "{}" },
+      };
       const thinkId = `tool.${call.id}`;
       const stepEmission: ThinkingStepEmission = {
         id: thinkId,
@@ -308,6 +353,15 @@ async function* run(args: RunArgs): AsyncGenerator<SSEEvent, void, unknown> {
       });
     }
   }
+  } catch (err) {
+    if (signal?.aborted) return;
+    // Never leak provider/internal error text to the client.
+    console.error("[chat-stream] turn failed", err);
+    yield {
+      type: "error",
+      data: { message: "The coach hit a problem generating a reply. Please try again." },
+    };
+  }
 
   // Persist final assistant message + any artifact rows.
   const assistantId = crypto.randomUUID();
@@ -373,22 +427,34 @@ async function* run(args: RunArgs): AsyncGenerator<SSEEvent, void, unknown> {
   }
 }
 
-function friendlyToolLabel(name: string): string {
+export function friendlyToolLabel(name: string): string {
   switch (name) {
-    case "get_profile": return "Reading your profile";
-    case "get_day_log": return "Reading today's log";
-    case "get_range": return "Pulling recent history";
-    case "get_health_snapshot": return "Reading today's vitals";
-    case "add_food_entry": return "Logging the meal";
-    case "correct_food_entry": return "Updating the meal";
-    case "search_memories": return "Searching memories";
-    case "add_memory": return "Saving a memory";
-    case "remove_memory": return "Removing a memory";
-    case "schedule_check_in": return "Scheduling a check-in";
-    case "analyze_impact": return "Analyzing impact";
+    case "getProfile": return "Reading your profile";
+    case "getDayLog": return "Reading today's log";
+    case "getRange": return "Pulling recent history";
+    case "getHealthSnapshot": return "Reading today's vitals";
+    case "getDrinkLog": return "Reading today's drinks";
+    case "getActivityStatus": return "Checking your status";
+    case "getCycleData": return "Reading cycle data";
+    case "getCycleInsight": return "Analyzing your cycle";
+    case "addFoodEntry": return "Logging the meal";
+    case "correctFoodEntry": return "Updating the meal";
+    case "addDrink": return "Logging the drink";
+    case "setActivityStatus": return "Updating your status";
+    case "addCycleEntry": return "Logging cycle data";
+    case "addWeightEntry": return "Saving your weight";
+    case "completeWorkout": return "Saving the workout";
+    case "searchMemories": return "Searching memories";
+    case "addMemory": return "Saving a memory";
+    case "removeMemory": return "Removing a memory";
+    case "scheduleCheckIn": return "Scheduling a check-in";
+    case "analyzeImpact": return "Analyzing impact";
+    case "analyzeImpactByTag": return "Analyzing habit impact";
     case "predict": return "Forecasting metrics";
-    case "propose_workout": return "Designing a workout";
-    case "propose_plan": return "Drafting a plan";
+    case "computeBiologicalAge": return "Estimating biological age";
+    case "classifyJournalEntry": return "Tagging the journal entry";
+    case "proposeWorkout": return "Designing a workout";
+    case "proposePlan": return "Drafting a plan";
     case "add_lab_report": return "Reading the lab document";
     case "get_biomarkers": return "Loading biomarkers";
     case "research_science": return "Searching scientific sources";
