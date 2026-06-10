@@ -6,13 +6,22 @@ struct BiologyView: View {
     @Query(sort: [SortDescriptor(\Biomarker.takenAt, order: .reverse)])
     private var biomarkers: [Biomarker]
 
+    @Query(sort: [SortDescriptor(\BiologicalAgeSnapshot.computedAt, order: .forward)])
+    private var bioAgeHistory: [BiologicalAgeSnapshot]
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 BiteTopBar(onBack: nil) { EmptyView() }
                 Group {
                     header
+                    if !biomarkers.isEmpty {
+                        bioAgeOrbit
+                    }
                     BiologicalAgeCard(onRefresh: refreshBioAge)
+                    if bioAgeHistory.count >= 2 {
+                        bioAgeTrend
+                    }
                     BioAgeBreakdownList()
                     BioAgeChart3D()
                     Text("BIOMARKERS")
@@ -35,6 +44,88 @@ struct BiologyView: View {
         .scrollIndicators(.hidden)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(.container, edges: .top)
+    }
+
+    /// Marquee biomarker orbit. Each marker becomes a tiny indicator at
+    /// its evenly-spaced angle, color-coded by status (in-range green,
+    /// out-of-range red). Center shows the count of markers tracked.
+    /// Uses the biology palette (purple/cosmic) so it stands apart from
+    /// nutrition/sleep dials elsewhere.
+    private var bioAgeOrbit: some View {
+        let unique = Array(biomarkers.prefix(24))
+        let indicators: [DialIndicator] = unique.enumerated().map { idx, marker in
+            DialIndicator(
+                angle: Double(idx) / Double(max(1, unique.count)) * 360.0,
+                color: statusColor(marker.status),
+                size: 12,
+                inset: 12,
+                systemImage: nil,
+                glow: marker.status != .inRange
+            )
+        }
+        let inRangeCount = biomarkers.filter { $0.status == .inRange }.count
+
+        return OrbitDial(
+            theme: .biology,
+            arcs: [],
+            indicators: indicators
+        ) {
+            VStack(spacing: 2) {
+                Text("\(biomarkers.count)")
+                    .font(.system(size: 38, weight: .heavy))
+                    .tracking(-1)
+                    .foregroundStyle(.white)
+                    .monospacedDigit()
+                Text("biomarkers")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.7))
+                Text("\(inRangeCount) in range")
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(0.4)
+                    .foregroundStyle(Color(hex: 0x9C7BFF))
+                    .padding(.top, 4)
+            }
+        }
+        .frame(maxWidth: 280, maxHeight: 280)
+        .padding(.vertical, 8)
+        .askCoachContext("Walk me through my biomarker panel — anything I should look at?")
+    }
+
+    /// 90-day BioAge trend line so the user can see whether their
+    /// computed age is trending toward or away from chronological.
+    private var bioAgeTrend: some View {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -90, to: Date()) ?? Date()
+        let filtered = bioAgeHistory.filter { $0.computedAt >= cutoff }
+        let values = filtered.map(\.biologicalAge)
+        let chrono = Double(filtered.last?.chronologicalAge ?? 0)
+        let delta = values.last.map { chrono - $0 } ?? 0
+
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("90-DAY TREND")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(0.4)
+                        .foregroundStyle(.biteInkFaint)
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(String(format: "%+.1f yr", delta))
+                            .font(.system(size: 22, weight: .heavy))
+                            .foregroundStyle(delta >= 0 ? .biteRingRecovery : .biteRed)
+                            .monospacedDigit()
+                        Text(delta >= 0 ? "younger than chrono" : "older than chrono")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.biteInkMuted)
+                    }
+                }
+                Spacer()
+                BiteSparkline(values: values, goal: chrono, color: delta >= 0 ? .biteRingRecovery : .biteRed, fillArea: true, height: 36)
+                    .frame(width: 120)
+            }
+        }
+        .padding(14)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: BiteTheme.smallCardCornerRadius, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: BiteTheme.smallCardCornerRadius, style: .continuous).stroke(Color.black.opacity(0.04), lineWidth: 1))
+        .biteShadow(.raised)
     }
 
     private var header: some View {

@@ -69,19 +69,19 @@ struct DailySummaryBar: View {
             // Macro bars
             HStack(spacing: 16) {
                 macroIndicator(
-                    label: "Proteine",
+                    label: "Protein",
                     current: log.totalProtein,
                     goal: profile.proteinGoal,
                     color: .biteBlue
                 )
                 macroIndicator(
-                    label: "Carboidrati",
+                    label: "Carbs",
                     current: log.totalCarbs,
                     goal: profile.carbsGoal,
                     color: .biteOrange
                 )
                 macroIndicator(
-                    label: "Grassi",
+                    label: "Fat",
                     current: log.totalFat,
                     goal: profile.fatGoal,
                     color: .biteRed

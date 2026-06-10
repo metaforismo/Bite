@@ -22,6 +22,7 @@ struct MenstrualLogSheet: View {
         ModalSheetContainer(title: "Log cycle entry", onClose: { router.closeModal() }) {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 16) {
+                    cycleWheel
                     dateField
                     flowField
                     symptomsField
@@ -31,9 +32,71 @@ struct MenstrualLogSheet: View {
                 .padding(.top, 4)
                 .padding(.bottom, 24)
             }
-            .frame(maxHeight: 520)
+            .frame(maxHeight: 620)
             .onAppear { hydrateForToday() }
         }
+    }
+
+    /// Cycle wheel — uses OrbitDial repurposed as a 4-phase ring
+    /// (menstruation/follicular/ovulation/luteal). Today's phase is
+    /// indicated by a glowing dot at the right offset; cycle day
+    /// number sits at the center.
+    private var cycleWheel: some View {
+        let info = currentCycleInfo()
+
+        // Map a 28-day cycle onto the dial's 24h coordinate system —
+        // each phase becomes a colored arc band.
+        let arcs: [DialArc] = [
+            DialArc(startAngle: 0,   endAngle: 64,  color: Color(hex: 0xE63C5E), width: 14, inset: 14), // menstruation
+            DialArc(startAngle: 64,  endAngle: 192, color: Color(hex: 0xFF93AD), width: 14, inset: 14), // follicular
+            DialArc(startAngle: 192, endAngle: 232, color: Color(hex: 0xFFB7C9), width: 14, inset: 14), // ovulation
+            DialArc(startAngle: 232, endAngle: 360, color: Color(hex: 0xC97898), width: 14, inset: 14), // luteal
+        ]
+
+        let dotAngle: Double = 360.0 * Double(info.dayInCycle - 1) / 28.0
+        let indicators: [DialIndicator] = [
+            DialIndicator(angle: dotAngle, color: Color(hex: 0xE63C5E), size: 24, inset: 14, systemImage: "drop.fill", glow: true)
+        ]
+
+        return OrbitDial(theme: .cycle, arcs: arcs, indicators: indicators) {
+            VStack(spacing: 2) {
+                Text("Day \(info.dayInCycle)")
+                    .font(.system(size: 24, weight: .heavy))
+                    .foregroundStyle(.biteInk)
+                Text(info.phaseLabel.uppercased())
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(0.6)
+                    .foregroundStyle(Color(hex: 0xC72E2E))
+            }
+        }
+        .frame(maxWidth: 240, maxHeight: 240)
+        .padding(.bottom, 6)
+    }
+
+    private struct CycleInfo {
+        let dayInCycle: Int
+        let phaseLabel: String
+    }
+
+    private func currentCycleInfo() -> CycleInfo {
+        // Use the most-recent menstruation start as anchor, or default
+        // to "Day 1" when no history exists yet.
+        let lastFlow = allEntries.first(where: { $0.flowLevel >= 1 })
+        let referenceDay = Calendar.current.startOfDay(for: date)
+        guard let start = lastFlow?.date else {
+            return CycleInfo(dayInCycle: 1, phaseLabel: "Menstruation")
+        }
+        let days = max(0, Calendar.current.dateComponents([.day], from: start, to: referenceDay).day ?? 0)
+        let dayInCycle = (days % 28) + 1
+
+        let phase: String
+        switch dayInCycle {
+        case 1...5:   phase = "Menstruation"
+        case 6...13:  phase = "Follicular"
+        case 14...16: phase = "Ovulation"
+        default:      phase = "Luteal"
+        }
+        return CycleInfo(dayInCycle: dayInCycle, phaseLabel: phase)
     }
 
     private var dateField: some View {

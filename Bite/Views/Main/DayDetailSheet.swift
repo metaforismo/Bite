@@ -99,7 +99,7 @@ struct DayDetailSheet: View {
 
             macroDetailRow(
                 icon: "p.circle.fill",
-                label: "Proteine",
+                label: "Protein",
                 current: log.totalProtein,
                 goal: profile.proteinGoal,
                 unit: "g",
@@ -107,7 +107,7 @@ struct DayDetailSheet: View {
             )
             macroDetailRow(
                 icon: "c.circle.fill",
-                label: "Carboidrati",
+                label: "Carbs",
                 current: log.totalCarbs,
                 goal: profile.carbsGoal,
                 unit: "g",
@@ -115,7 +115,7 @@ struct DayDetailSheet: View {
             )
             macroDetailRow(
                 icon: "f.circle.fill",
-                label: "Grassi",
+                label: "Fat",
                 current: log.totalFat,
                 goal: profile.fatGoal,
                 unit: "g",
