@@ -75,6 +75,7 @@ final class StorageService {
                 }
             }
             try ctx.save()
+            NotificationService.shared.scheduleReminderIfNeeded()
         } catch {
             assertionFailure("saveDayLog failed: \(error)")
         }

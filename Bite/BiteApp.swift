@@ -3,6 +3,7 @@ import SwiftData
 
 @main
 struct BiteApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var userProfile: UserProfile = .default
     @State private var isLoading = true
     @State private var showV2Welcome = false
@@ -60,6 +61,12 @@ struct BiteApp: App {
             .onOpenURL { url in
                 if let link = BiteDeepLink(url: url) {
                     pendingDeepLink = link
+                }
+            }
+            .onChange(of: DeepLinkBox.shared.pending, initial: true) { _, link in
+                if let link {
+                    pendingDeepLink = link
+                    DeepLinkBox.shared.pending = nil
                 }
             }
             .task {
