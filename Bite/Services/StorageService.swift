@@ -75,9 +75,28 @@ final class StorageService {
                 }
             }
             try ctx.save()
+            if Calendar.current.isDateInToday(log.date) {
+                refreshWidgetSnapshot(with: log)
+            }
         } catch {
             assertionFailure("saveDayLog failed: \(error)")
         }
+    }
+
+    private func refreshWidgetSnapshot(with log: DayLog) {
+        let profile = loadProfile()
+        var snapshot = BiteWidgetSnapshot.load()
+        snapshot.refreshedAt = Date()
+        snapshot.consumedCalories = log.entries.compactMap(\.nutrition?.calories).reduce(0, +)
+        snapshot.calorieGoal = profile.calorieGoal
+        snapshot.protein = log.entries.compactMap(\.nutrition?.protein).reduce(0, +)
+        snapshot.carbs = log.entries.compactMap(\.nutrition?.carbs).reduce(0, +)
+        snapshot.fat = log.entries.compactMap(\.nutrition?.fat).reduce(0, +)
+        snapshot.fiber = log.entries.compactMap(\.nutrition?.fiber).reduce(0, +)
+        snapshot.nutritionPercent = profile.calorieGoal > 0
+            ? min(1, Double(snapshot.consumedCalories) / Double(profile.calorieGoal))
+            : 0
+        WidgetSnapshotService.write(snapshot)
     }
 
     func loadDayLog(for date: Date) -> DayLog {

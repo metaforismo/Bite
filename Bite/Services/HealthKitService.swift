@@ -41,7 +41,7 @@ final class HealthKitService {
 
         do {
             try await store.requestAuthorization(toShare: writeTypes, read: readTypes)
-            return true
+            return store.authorizationStatus(for: HKQuantityType(.dietaryEnergyConsumed)) == .sharingAuthorized
         } catch {
             return false
         }
@@ -109,6 +109,38 @@ final class HealthKitService {
                 }
                 let totalSeconds = asleep.reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) }
                 continuation.resume(returning: totalSeconds > 0 ? totalSeconds / 3600 : nil)
+            }
+            store.execute(query)
+        }
+    }
+
+    /// Start and end of last night's sleep, taken from the actual sample interval.
+    func fetchLastNightSleepInterval() async -> (start: Date, end: Date)? {
+        guard isAvailable else { return nil }
+        let type = HKCategoryType(.sleepAnalysis)
+        let cal = Calendar.current
+        let end = Date()
+        guard let start = cal.date(byAdding: .hour, value: -24, to: end) else { return nil }
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, _ in
+                guard let categorySamples = samples as? [HKCategorySample] else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                let asleep = categorySamples.filter {
+                    $0.value == HKCategoryValueSleepAnalysis.asleepCore.rawValue ||
+                    $0.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue ||
+                    $0.value == HKCategoryValueSleepAnalysis.asleepREM.rawValue ||
+                    $0.value == HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue
+                }
+                guard let first = asleep.map(\.startDate).min(),
+                      let last = asleep.map(\.endDate).max()
+                else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                continuation.resume(returning: (first, last))
             }
             store.execute(query)
         }

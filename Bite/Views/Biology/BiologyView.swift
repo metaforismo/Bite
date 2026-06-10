@@ -9,6 +9,9 @@ struct BiologyView: View {
     @Query(sort: [SortDescriptor(\BiologicalAgeSnapshot.computedAt, order: .forward)])
     private var bioAgeHistory: [BiologicalAgeSnapshot]
 
+    @State private var sleepHours: Double?
+    @State private var steps: Int = 0
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
@@ -46,6 +49,13 @@ struct BiologyView: View {
         .scrollIndicators(.hidden)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(.container, edges: .top)
+        .task {
+            async let sleepTask = HealthKitService.shared.fetchLastNightSleepHours()
+            async let stepsTask = HealthKitService.shared.fetchTodaySteps()
+            let (s, st) = await (sleepTask, stepsTask)
+            sleepHours = s
+            steps = st
+        }
     }
 
     private var biomarkerSummaryStrip: some View {
@@ -89,8 +99,8 @@ struct BiologyView: View {
             }
 
             VStack(spacing: 8) {
-                BiologySystemRow(icon: "moon.zzz.fill", title: "Sleep", detail: "Apple Health primary", status: "Pending", tint: .biteRingSleep)
-                BiologySystemRow(icon: "figure.walk", title: "Activity", detail: "Steps, energy, workouts", status: "Live", tint: .biteRingRecovery)
+                BiologySystemRow(icon: "moon.zzz.fill", title: "Sleep", detail: "Apple Health primary", status: sleepHours != nil ? "Live" : "Pending", tint: .biteRingSleep)
+                BiologySystemRow(icon: "figure.walk", title: "Activity", detail: "Steps, energy, workouts", status: steps > 0 ? "Live" : "Pending", tint: .biteRingRecovery)
                 BiologySystemRow(icon: "drop.fill", title: "Blood", detail: "\(bloodCount) markers indexed", status: bloodCount == 0 ? "Needs labs" : "Tracked", tint: .biteRed)
                 BiologySystemRow(icon: "chart.line.uptrend.xyaxis", title: "Metabolic", detail: "\(metabolicCount) markers indexed", status: metabolicCount == 0 ? "Needs labs" : "Tracked", tint: .biteCarbs)
             }

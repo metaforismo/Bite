@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Binding var userProfile: UserProfile
+    @Environment(\.openURL) private var openURL
     @State private var vm: SettingsViewModel?
     @State private var showExportShare = false
     @State private var exportData: Data?
@@ -43,19 +44,19 @@ struct SettingsView: View {
     @ViewBuilder
     private func settingsContent(vm: SettingsViewModel) -> some View {
         Form {
-            // 1. Profilo
-            Section("Profilo") {
+            // 1. Profile
+            Section("Profile") {
                 HStack {
-                    Label("Nome", systemImage: "person.fill")
+                    Label("Name", systemImage: "person.fill")
                     Spacer()
-                    TextField("Il tuo nome", text: Bindable(vm).draftProfile.name)
+                    TextField("Your name", text: Bindable(vm).draftProfile.name)
                         .multilineTextAlignment(.trailing)
                         .foregroundStyle(.secondary)
                 }
                 HStack {
                     Label("Email", systemImage: "envelope.fill")
                     Spacer()
-                    TextField("La tua email", text: Bindable(vm).draftProfile.email)
+                    TextField("Your email", text: Bindable(vm).draftProfile.email)
                         .multilineTextAlignment(.trailing)
                         .foregroundStyle(.secondary)
                         .keyboardType(.emailAddress)
@@ -70,11 +71,11 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     if let tdee = vm.dailyBurn {
                         HStack {
-                            Text("TDEE stimato")
+                            Text("Estimated TDEE")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             Spacer()
-                            Text("\(tdee) kcal/giorno")
+                            Text("\(tdee) kcal/day")
                                 .font(.caption)
                                 .fontWeight(.medium)
                         }
@@ -90,7 +91,7 @@ struct SettingsView: View {
                 NavigationLink {
                     NutritionGoalsView(vm: vm)
                 } label: {
-                    Label("Obiettivi nutrizionali", systemImage: "target")
+                    Label("Nutrition goals", systemImage: "target")
                 }
             } header: {
                 Text("Goals & Targets")
@@ -112,7 +113,7 @@ struct SettingsView: View {
                     }
                     if let activity = vm.draftProfile.activityLevel {
                         HStack {
-                            Text("Attività")
+                            Text("Activity")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             Spacer()
@@ -126,7 +127,7 @@ struct SettingsView: View {
                 NavigationLink {
                     HealthProfileView(vm: vm)
                 } label: {
-                    Label("Profilo salute", systemImage: "heart.fill")
+                    Label("Health profile", systemImage: "heart.fill")
                 }
             } header: {
                 Text("Health Profile")
@@ -142,12 +143,12 @@ struct SettingsView: View {
                                 .fontWeight(.bold)
                                 .fontDesign(.rounded)
                         } else {
-                            Text("Nessun dato")
+                            Text("No data")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
                         if let change = vm.monthlyWeightChange {
-                            Text(String(format: "%+.1f kg questo mese", change))
+                            Text(String(format: "%+.1f kg this month", change))
                                 .font(.caption)
                                 .foregroundStyle(change < 0 ? .green : change > 0 ? .orange : .secondary)
                         }
@@ -167,7 +168,7 @@ struct SettingsView: View {
             // 5. Saved Meals
             Section {
                 HStack {
-                    Label("Pasti salvati", systemImage: "bookmark.fill")
+                    Label("Saved meals", systemImage: "bookmark.fill")
                     Spacer()
                     Text("\(vm.savedMealsCount)")
                         .foregroundStyle(.secondary)
@@ -176,7 +177,7 @@ struct SettingsView: View {
                 NavigationLink {
                     SavedMealsView(vm: vm)
                 } label: {
-                    Label("Gestisci salvati", systemImage: "list.bullet")
+                    Label("Manage saved", systemImage: "list.bullet")
                 }
             } header: {
                 Text("Saved Meals")
@@ -184,37 +185,37 @@ struct SettingsView: View {
 
             // 6. Preferences
             Section {
-                Picker("Bias calorico", selection: Bindable(vm).draftProfile.calorieBias) {
-                    Text("Non specificato").tag(nil as CalorieBias?)
+                Picker("Calorie bias", selection: Bindable(vm).draftProfile.calorieBias) {
+                    Text("Not specified").tag(nil as CalorieBias?)
                     ForEach(CalorieBias.allCases, id: \.self) { bias in
                         Text(bias.rawValue).tag(bias as CalorieBias?)
                     }
                 }
 
-                Toggle("Usa posizione per ristoranti", isOn: Bindable(vm).draftProfile.useLocationForRestaurants)
+                Toggle("Use location for restaurants", isOn: Bindable(vm).draftProfile.useLocationForRestaurants)
 
-                Toggle("Promemoria giornalieri", isOn: Bindable(vm).draftProfile.dailyRemindersEnabled)
+                Toggle("Daily reminders", isOn: Bindable(vm).draftProfile.dailyRemindersEnabled)
 
                 if vm.draftProfile.dailyRemindersEnabled {
-                    Picker("Frequenza", selection: Bindable(vm).draftProfile.reminderFrequency) {
+                    Picker("Frequency", selection: Bindable(vm).draftProfile.reminderFrequency) {
                         ForEach(ReminderFrequency.allCases, id: \.self) { freq in
                             Text(freq.rawValue).tag(freq)
                         }
                     }
                 }
             } header: {
-                Text("Preferenze")
+                Text("Preferences")
             }
 
             // 7. Apple Health
             Section {
-                Toggle("Abilita Apple Health", isOn: Bindable(vm).draftProfile.healthEnabled)
+                Toggle("Enable Apple Health", isOn: Bindable(vm).draftProfile.healthEnabled)
 
                 if vm.draftProfile.healthEnabled {
                     NavigationLink {
                         AppleHealthSettingsView(vm: vm)
                     } label: {
-                        Label("Impostazioni Health", systemImage: "heart.text.clipboard")
+                        Label("Health settings", systemImage: "heart.text.clipboard")
                     }
                 }
             } header: {
@@ -223,15 +224,15 @@ struct SettingsView: View {
 
             // 8. Device Settings
             Section {
-                Toggle("Fuso orario automatico", isOn: Bindable(vm).draftProfile.automaticTimeZone)
+                Toggle("Automatic time zone", isOn: Bindable(vm).draftProfile.automaticTimeZone)
 
-                Picker("Lingua dettatura", selection: Bindable(vm).draftProfile.dictationLanguage) {
+                Picker("Dictation language", selection: Bindable(vm).draftProfile.dictationLanguage) {
                     ForEach(DictationLanguage.allCases, id: \.self) { lang in
                         Text(lang.rawValue).tag(lang)
                     }
                 }
             } header: {
-                Text("Dispositivo")
+                Text("Device")
             }
 
             // 9. Subscription
@@ -240,7 +241,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Trial")
                             .font(.headline)
-                        Text("Versione di prova attiva")
+                        Text("Trial version active")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -249,7 +250,7 @@ struct SettingsView: View {
                         .foregroundStyle(.green)
                 }
             } header: {
-                Text("Abbonamento")
+                Text("Subscription")
             }
 
             // 10. System Actions
@@ -257,22 +258,26 @@ struct SettingsView: View {
                 NavigationLink {
                     AboutView()
                 } label: {
-                    Label("Informazioni su Bite", systemImage: "info.circle")
+                    Label("About Bite", systemImage: "info.circle")
                 }
 
                 Button {
-                    // Feedback action placeholder
+                    if let url = URL(string: "mailto:francescogiannicola1@gmail.com?subject=Bite%20Feedback") {
+                        openURL(url)
+                    }
                 } label: {
-                    Label("Invia feedback", systemImage: "envelope")
+                    Label("Send feedback", systemImage: "envelope")
                 }
 
                 Button {
-                    // Contact action placeholder
+                    if let url = URL(string: "mailto:francescogiannicola1@gmail.com?subject=Bite%20Support") {
+                        openURL(url)
+                    }
                 } label: {
-                    Label("Contattaci", systemImage: "questionmark.circle")
+                    Label("Contact us", systemImage: "questionmark.circle")
                 }
             } header: {
-                Text("Supporto")
+                Text("Support")
             }
 
             Section {
@@ -280,42 +285,42 @@ struct SettingsView: View {
                     exportData = vm.exportData()
                     showExportShare = true
                 } label: {
-                    Label("Esporta dati", systemImage: "square.and.arrow.up")
+                    Label("Export data", systemImage: "square.and.arrow.up")
                 }
 
                 Button(role: .destructive) {
                     vm.clearLocalCache()
                 } label: {
-                    Label("Svuota cache locale", systemImage: "trash")
+                    Label("Clear local cache", systemImage: "trash")
                 }
 
                 Button(role: .destructive) {
                     vm.deleteAccount()
                 } label: {
-                    Label("Elimina account", systemImage: "person.crop.circle.badge.minus")
+                    Label("Delete account", systemImage: "person.crop.circle.badge.minus")
                 }
             } header: {
-                Text("Dati")
+                Text("Data")
             }
 
             // Icon picker
             Section {
                 AppIconPicker()
             } header: {
-                Text("Icona App")
+                Text("App Icon")
             }
 
             // App version
             Section {
                 HStack {
-                    Label("Versione", systemImage: "gear")
+                    Label("Version", systemImage: "gear")
                     Spacer()
                     Text(appVersion)
                         .foregroundStyle(.secondary)
                 }
             }
         }
-        .navigationTitle("Impostazioni")
+        .navigationTitle("Settings")
         .sheet(isPresented: $showExportShare) {
             if let data = exportData {
                 ShareSheet(data: data)
@@ -340,7 +345,7 @@ struct SettingsView: View {
         HStack(spacing: 6) {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.green)
-            Text("Salvato")
+            Text("Saved")
                 .font(.subheadline.weight(.medium))
         }
         .padding(.horizontal, 16)

@@ -6,19 +6,19 @@ struct AppleHealthSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Invia calorie", isOn: Bindable(vm).draftProfile.healthSendCalories)
-                Toggle("Invia macronutrienti", isOn: Bindable(vm).draftProfile.healthSendMacros)
+                Toggle("Send calories", isOn: Bindable(vm).draftProfile.healthSendCalories)
+                Toggle("Send macronutrients", isOn: Bindable(vm).draftProfile.healthSendMacros)
             } header: {
-                Text("Scrittura dati")
+                Text("Write data")
             }
 
             Section {
                 Toggle("Active calories", isOn: Bindable(vm).draftProfile.healthReadBurnedCalories)
-                Toggle("Energia a riposo", isOn: Bindable(vm).draftProfile.healthReadRestingEnergy)
-                Toggle("Passi", isOn: Bindable(vm).draftProfile.healthReadSteps)
-                Toggle("Allenamenti", isOn: Bindable(vm).draftProfile.healthReadWorkouts)
+                Toggle("Resting energy", isOn: Bindable(vm).draftProfile.healthReadRestingEnergy)
+                Toggle("Steps", isOn: Bindable(vm).draftProfile.healthReadSteps)
+                Toggle("Workouts", isOn: Bindable(vm).draftProfile.healthReadWorkouts)
             } header: {
-                Text("Lettura dati")
+                Text("Read data")
             }
 
             Section {
@@ -30,7 +30,7 @@ struct AppleHealthSettingsView: View {
                 } label: {
                     HStack {
                         Image(systemName: "questionmark.circle")
-                        Text("Non vedi i dati? Apri Apple Health")
+                        Text("Not seeing your data? Open Apple Health")
                     }
                 }
             }

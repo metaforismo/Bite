@@ -11,15 +11,15 @@ enum AIServiceError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .networkUnavailable:
-            return "Connessione non disponibile. I tuoi dati sono salvati localmente."
+            return "No connection available. Your data is saved locally."
         case .serverError(let code):
-            return "Errore del server (\(code)). Riprova tra poco."
+            return "Server error (\(code)). Try again shortly."
         case .rateLimited:
-            return "Troppe richieste. Attendi qualche secondo."
+            return "Too many requests. Wait a few seconds."
         case .invalidResponse:
-            return "Risposta non valida. Riprova."
+            return "Invalid response. Try again."
         case .timeout:
-            return "Timeout della richiesta. Controlla la connessione."
+            return "Request timed out. Check your connection."
         }
     }
 }
