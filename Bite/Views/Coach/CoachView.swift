@@ -65,6 +65,15 @@ struct CoachView: View {
         .onChange(of: router.prefilledChatPrompt) { _, value in
             if let value, !value.isEmpty { input = value }
         }
+        .onChange(of: router.autoSendChatMessage) { _, value in
+            if let value, !value.isEmpty {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(120))
+                    chat?.send(value)
+                    router.autoSendChatMessage = nil
+                }
+            }
+        }
     }
 
     private var header: some View {
@@ -211,23 +220,25 @@ struct CoachView: View {
     private var quickActions: some View {
         Group {
             if chat?.mode == .idle || chat == nil {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(Self.quickActionItems, id: \.title) { item in
-                            QuickActionCard(
-                                systemImage: item.icon,
-                                iconColor: item.color,
-                                title: item.title,
-                                subtitle: item.subtitle
-                            ) {
-                                input = item.prefill
-                                inputFocused = true
+                GlassEffectContainer(spacing: 6) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(Self.quickActionItems, id: \.title) { item in
+                                QuickActionCard(
+                                    systemImage: item.icon,
+                                    iconColor: item.color,
+                                    title: item.title,
+                                    subtitle: item.subtitle
+                                ) {
+                                    input = item.prefill
+                                    inputFocused = true
+                                }
                             }
                         }
+                        .padding(.horizontal, 16)
                     }
-                    .padding(.horizontal, 16)
                 }
-                .padding(.bottom, 12)
+                .padding(.bottom, 8)
             }
         }
     }

@@ -113,11 +113,13 @@ struct BiteShell: View {
         guard let link else { return }
         defer { pendingDeepLink = nil }
         switch link {
-        case .today:     router.homeTab = .home
-        case .journal:   router.homeTab = .journal
-        case .fitness:   router.homeTab = .fitness
-        case .biology:   router.homeTab = .biology
-        case .hydration: router.openModal(.hydration)
+        case .today:       router.homeTab = .home
+        case .journal:     router.homeTab = .journal
+        case .fitness:     router.homeTab = .fitness
+        case .biology:     router.homeTab = .biology
+        case .hydration:   router.openModal(.hydration)
+        case .dailyReview:
+            router.openChat(prefill: "How did today go? Walk me through my nutrition, recovery, and what to focus on tomorrow.")
         }
     }
 

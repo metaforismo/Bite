@@ -7,6 +7,9 @@ final class NotificationService {
 
     private init() {}
 
+    private static let dailyReminderId = "bite_daily_reminder"
+    private static let dailyReviewId = "bite_daily_review"
+
     func requestAuthorization() async -> Bool {
         do {
             return try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
@@ -15,20 +18,17 @@ final class NotificationService {
         }
     }
 
+    /// Reminds at 8pm if no food has been logged today.
     func scheduleReminderIfNeeded() {
         let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [Self.dailyReminderId])
 
-        // Remove existing reminders
-        center.removePendingNotificationRequests(withIdentifiers: ["bite_daily_reminder"])
-
-        // Check if user has logged today
         let todayLog = StorageService.shared.loadDayLog(for: Date())
         guard todayLog.entries.isEmpty else { return }
 
-        // Schedule for 8 PM
         let content = UNMutableNotificationContent()
         content.title = "Bite"
-        content.body = "Non hai ancora registrato nulla oggi"
+        content.body = "You haven't logged anything today — open Bite to catch up?"
         content.sound = .default
 
         var dateComponents = DateComponents()
@@ -36,12 +36,37 @@ final class NotificationService {
         dateComponents.minute = 0
 
         let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: false)
-        let request = UNNotificationRequest(identifier: "bite_daily_reminder", content: content, trigger: trigger)
-
+        let request = UNNotificationRequest(identifier: Self.dailyReminderId, content: content, trigger: trigger)
         center.add(request)
     }
 
+    /// Recurring 9pm "Daily review with Bite" prompt. Tap opens the app
+    /// at the chat with a prefilled review prompt (handled by deep-link
+    /// resolver). Repeats every day until cancelled.
+    func scheduleDailyReview() {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [Self.dailyReviewId])
+
+        let content = UNMutableNotificationContent()
+        content.title = "Daily review with Bite"
+        content.body = "How did today go? Tap to walk through it together."
+        content.sound = .default
+        content.userInfo = ["deep_link": "daily_review"]
+
+        var components = DateComponents()
+        components.hour = 21
+        components.minute = 0
+
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+        let request = UNNotificationRequest(identifier: Self.dailyReviewId, content: content, trigger: trigger)
+        center.add(request)
+    }
+
+    func cancelDailyReview() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.dailyReviewId])
+    }
+
     func cancelReminder() {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["bite_daily_reminder"])
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.dailyReminderId])
     }
 }
