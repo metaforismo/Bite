@@ -127,20 +127,17 @@ struct BiteShell: View {
 
     @ViewBuilder
     private var homeLayer: some View {
-        ZStack {
-            BiteGradientBackground(style: .today)
-
-            // Tab content swap
-            Group {
-                switch router.homeTab {
-                case .home:    TodayView(userProfile: $userProfile)
-                case .journal: JournalView()
-                case .fitness: FitnessView(router: router)
-                case .biology: BiologyView(router: router)
-                }
+        Group {
+            switch router.homeTab {
+            case .home:    TodayView(userProfile: $userProfile)
+            case .journal: JournalView()
+            case .fitness: FitnessView(router: router)
+            case .biology: BiologyView(router: router)
             }
-            .transition(.opacity)
         }
+        .transition(.opacity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(BiteGradientBackground(style: .today))
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !router.route.hidesAskPill && router.modalSheet == nil {
                 floatingControls

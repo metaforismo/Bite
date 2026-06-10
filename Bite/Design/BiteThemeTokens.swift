@@ -69,7 +69,6 @@ enum BiteTheme {
     static let askPillBottomInset: CGFloat = 112
     static let tabPillBottomInset: CGFloat = 36
     static let topPadding: CGFloat = 56
-    static let bottomFloatingClearance: CGFloat = 110
 
     // Top safe-area system. Any page that renders chrome above its content
     // (back button, progress, close action) should use BiteTopBar so these

@@ -10,60 +10,74 @@ struct WorkoutSessionView: View {
     let context: WorkoutSessionContext
     let onFinish: () -> Void
 
+    @State private var session: SDStrengthSession?
+
+    var body: some View {
+        Group {
+            if let session {
+                WorkoutSessionContent(context: context, session: session, onFinish: onFinish)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(BiteGradientBackground(style: .today))
+        .onAppear {
+            if let session {
+                if !session.sets.contains(where: { $0.completedAt != nil }) {
+                    session.startedAt = .now
+                }
+            } else {
+                // Pre-instantiate empty SDStrengthSet rows for every (exercise, set index).
+                let initialSets: [SDStrengthSet] = context.exercises.flatMap { exercise in
+                    (0..<max(1, exercise.sets)).map { idx in
+                        SDStrengthSet(exerciseName: exercise.name, setIndex: idx)
+                    }
+                }
+                session = SDStrengthSession(
+                    workoutArtifactID: context.artifactID,
+                    title: context.title,
+                    sets: initialSets
+                )
+            }
+        }
+    }
+}
+
+private struct WorkoutSessionContent: View {
+    let context: WorkoutSessionContext
+    @Bindable var session: SDStrengthSession
+    let onFinish: () -> Void
+
     @Environment(\.modelContext) private var modelContext
-    @State private var session: SDStrengthSession
     @State private var showingPlateFor: PlateBindingTarget?
     @State private var showingDiscardConfirm = false
+    @State private var showingEmptyFinishConfirm = false
     @State private var showingAddExercise = false
     @State private var newExerciseName = ""
     @State private var extraExercises: [WorkoutSessionContext.Exercise] = []
 
-    init(context: WorkoutSessionContext, onFinish: @escaping () -> Void) {
-        self.context = context
-        self.onFinish = onFinish
-
-        // Pre-instantiate empty SDStrengthSet rows for every (exercise, set index).
-        let initialSets: [SDStrengthSet] = context.exercises.flatMap { exercise in
-            (0..<max(1, exercise.sets)).map { idx in
-                SDStrengthSet(exerciseName: exercise.name, setIndex: idx)
-            }
-        }
-        let session = SDStrengthSession(
-            workoutArtifactID: context.artifactID,
-            title: context.title,
-            sets: initialSets
-        )
-        self._session = State(initialValue: session)
-    }
-
     var body: some View {
-        ZStack(alignment: .bottom) {
-            BiteGradientBackground(style: .today)
-                .ignoresSafeArea()
-
-            ScrollView {
-                VStack(spacing: 10) {
-                    header
-                    sessionProgress
-                    exerciseList
-                    Button {
-                        showingAddExercise = true
-                    } label: {
-                        Label("Add exercise", systemImage: "plus")
-                            .font(.system(size: 14, weight: .heavy))
-                            .foregroundStyle(.biteInk)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 44)
-                            .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.black.opacity(0.05), lineWidth: 1))
-                    }
-                    .buttonStyle(PressableScaleButtonStyle(pressedScale: 0.98))
-                    Spacer(minLength: 92)
+        ScrollView {
+            VStack(spacing: 10) {
+                header
+                sessionProgress
+                exerciseList
+                Button {
+                    showingAddExercise = true
+                } label: {
+                    Label("Add exercise", systemImage: "plus")
+                        .font(.system(size: 14, weight: .heavy))
+                        .foregroundStyle(.biteInk)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.black.opacity(0.05), lineWidth: 1))
                 }
-                .padding(.horizontal, 12)
-                .padding(.top, 12)
+                .buttonStyle(PressableScaleButtonStyle(pressedScale: 0.98))
             }
-
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             finishBar
         }
         .alert("Discard workout?", isPresented: $showingDiscardConfirm) {
@@ -71,6 +85,10 @@ struct WorkoutSessionView: View {
             Button("Keep going", role: .cancel) {}
         } message: {
             Text("Sets you've already logged will be lost.")
+        }
+        .alert("Nothing logged — discard this workout?", isPresented: $showingEmptyFinishConfirm) {
+            Button("Discard", role: .destructive) { onFinish() }
+            Button("Cancel", role: .cancel) {}
         }
         .sheet(item: $showingPlateFor) { target in
             PlateCalculatorSheet(
@@ -101,19 +119,10 @@ struct WorkoutSessionView: View {
                 }
             }
             Spacer()
-            Button {
-                finish()
-            } label: {
-                Text("Finish")
-                    .font(.system(size: 13, weight: .heavy))
-                    .foregroundStyle(.biteRed)
-                    .padding(.horizontal, 13)
-                    .frame(height: 34)
-                    .background(Color.biteRed.opacity(0.10), in: Capsule())
-            }
-            .buttonStyle(PressableScaleButtonStyle(pressedScale: 0.96))
-            Button {
-                showingDiscardConfirm = true
+            Menu {
+                Button("Discard workout", systemImage: "trash", role: .destructive) {
+                    showingDiscardConfirm = true
+                }
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 17, weight: .heavy))
@@ -182,7 +191,8 @@ struct WorkoutSessionView: View {
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 16)
-        .padding(.bottom, 24)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
     }
 
     private var activeExercises: [WorkoutSessionContext.Exercise] {
@@ -266,6 +276,10 @@ struct WorkoutSessionView: View {
     }
 
     private func finish() {
+        guard session.sets.contains(where: { $0.completedAt != nil }) else {
+            showingEmptyFinishConfirm = true
+            return
+        }
         session.completedAt = Date()
         modelContext.insert(session)
         try? modelContext.save()
