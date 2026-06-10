@@ -35,10 +35,9 @@ final class CheckInService {
 
     /// Schedule N candidate alarms 5 minutes apart in the wake window
     /// `[target − windowMinutes, target]`. Each fires with a UNNotification at
-    /// its time; the app's notification delegate gates presentation by
-    /// querying HealthKit sleep stages — only "light" stages (asleepCore /
-    /// asleepREM) actually wake the user. The deadline alarm fires
-    /// unconditionally. Returns the persisted SDSmartAlarm row.
+    /// its time; once the first candidate fires, the app's notification
+    /// delegate (`AppDelegate`) cancels the remaining pending candidates so
+    /// only one alarm wakes the user. Returns the persisted SDSmartAlarm row.
     func scheduleSmartAlarm(
         targetHour: Int,
         targetMinute: Int,
