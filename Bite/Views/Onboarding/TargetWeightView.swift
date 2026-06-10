@@ -27,8 +27,8 @@ struct TargetWeightView: View {
     }
 
     private var targetDeltaText: String? {
-        guard let currentWeight = Double(vm.weightKg),
-              let targetWeight = Double(vm.targetWeightKg),
+        guard let currentWeight = OnboardingViewModel.parseDecimal(vm.weightKg),
+              let targetWeight = OnboardingViewModel.parseDecimal(vm.targetWeightKg),
               currentWeight > 0,
               targetWeight > 0 else { return nil }
         let diff = currentWeight - targetWeight
@@ -38,8 +38,8 @@ struct TargetWeightView: View {
     }
 
     private func adjustWeight(by amount: Double) {
-        let current = Double(vm.targetWeightKg) ?? 70
-        let newValue = max(30, current + amount)
+        let current = OnboardingViewModel.parseDecimal(vm.targetWeightKg) ?? 70
+        let newValue = max(30, min(300, current + amount))
         withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
             vm.targetWeightKg = String(format: "%.0f", newValue)
         }

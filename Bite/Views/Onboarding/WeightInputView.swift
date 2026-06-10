@@ -26,8 +26,8 @@ struct WeightInputView: View {
     }
 
     private func adjustWeight(by amount: Double) {
-        let current = Double(vm.weightKg) ?? 70
-        let newValue = max(30, current + amount)
+        let current = OnboardingViewModel.parseDecimal(vm.weightKg) ?? 70
+        let newValue = max(30, min(300, current + amount))
         withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
             vm.weightKg = String(format: "%.1f", newValue)
         }

@@ -17,6 +17,7 @@ struct OnboardingScaffold<Content: View>: View {
     let primaryActionTitle: String
     let primaryActionDisabled: Bool
     let primaryActionLoading: Bool
+    let primaryActionConfirmed: Bool
     let primaryAction: () -> Void
     let secondaryActionTitle: String?
     let secondaryAction: (() -> Void)?
@@ -35,6 +36,7 @@ struct OnboardingScaffold<Content: View>: View {
         primaryActionTitle: String = "Continue",
         primaryActionDisabled: Bool = false,
         primaryActionLoading: Bool = false,
+        primaryActionConfirmed: Bool = false,
         secondaryActionTitle: String? = nil,
         secondaryAction: (() -> Void)? = nil,
         @ViewBuilder content: () -> Content,
@@ -48,6 +50,7 @@ struct OnboardingScaffold<Content: View>: View {
         self.primaryActionTitle = primaryActionTitle
         self.primaryActionDisabled = primaryActionDisabled
         self.primaryActionLoading = primaryActionLoading
+        self.primaryActionConfirmed = primaryActionConfirmed
         self.secondaryActionTitle = secondaryActionTitle
         self.secondaryAction = secondaryAction
         self.content = content()
@@ -71,6 +74,7 @@ struct OnboardingScaffold<Content: View>: View {
                     .font(.system(size: 28, weight: .heavy, design: .rounded))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.biteInk)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 24)
                     .opacity(titleVisible ? 1 : 0)
                     .offset(y: titleVisible ? 0 : 12)
@@ -80,6 +84,7 @@ struct OnboardingScaffold<Content: View>: View {
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(.biteInkMuted)
                         .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 32)
                         .opacity(titleVisible ? 1 : 0)
                         .offset(y: titleVisible ? 0 : 10)
@@ -101,6 +106,9 @@ struct OnboardingScaffold<Content: View>: View {
                     HStack(spacing: 8) {
                         if primaryActionLoading {
                             ProgressView().tint(.white)
+                        } else if primaryActionConfirmed {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 16, weight: .heavy))
                         }
                         Text(primaryActionTitle)
                             .font(.system(size: 16, weight: .heavy))

@@ -5,6 +5,7 @@ struct HealthKitView: View {
     let onAuthorized: () -> Void
 
     @State private var isRequesting = false
+    @State private var hasResolved = false
     @State private var revealedRows: Int = 0
 
     private let benefits: [(icon: String, label: String, tint: Color)] = [
@@ -20,8 +21,9 @@ struct HealthKitView: View {
             iconColor: .biteRed,
             title: "Connect Apple Health",
             subtitle: "Bite reads sleep, heart rate, weight, and more — and writes your nutrition back so everything stays in sync.",
-            primaryActionTitle: isRequesting ? "Connecting…" : "Connect Apple Health",
+            primaryActionTitle: isRequesting ? "Connecting…" : (hasResolved ? "Continue" : "Connect Apple Health"),
             primaryActionLoading: isRequesting,
+            primaryActionConfirmed: hasResolved,
             secondaryActionTitle: "Skip",
             secondaryAction: onContinue
         ) {
@@ -35,6 +37,10 @@ struct HealthKitView: View {
             .padding(.top, 4)
             .onAppear { staggerReveal() }
         } primaryAction: {
+            if hasResolved {
+                onContinue()
+                return
+            }
             isRequesting = true
             Task {
                 let authorized = await HealthKitService.shared.requestAuthorization()
@@ -43,7 +49,7 @@ struct HealthKitView: View {
                     BiteHaptics.success()
                     onAuthorized()
                 }
-                onContinue()
+                hasResolved = true
             }
         }
     }
