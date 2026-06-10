@@ -112,16 +112,6 @@ struct FoodCartCard: View {
                         .foregroundStyle(.biteInkMuted)
                 }
             }
-
-            Button(action: addToLog) {
-                Text("Add to log")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-            }
-            .background(.biteInk, in: Capsule())
-            .buttonStyle(.plain)
         }
         .padding(16)
     }
@@ -136,28 +126,6 @@ struct FoodCartCard: View {
         } else {
             payload = decoded
         }
-    }
-
-    private func addToLog() {
-        guard let p = payload else { return }
-        let entry = FoodEntry(
-            text: p.dishName,
-            nutrition: NutritionInfo(
-                calories: p.kcal,
-                protein: p.protein,
-                carbs: p.carbs,
-                fat: p.fat,
-                fiber: p.fiber
-            ),
-            createdAt: p.mealAt ?? Date(),
-            isSaved: false
-        )
-        StorageService.shared.saveDayLog(
-            DayLog(
-                date: entry.createdAt,
-                entries: StorageService.shared.loadDayLog(for: entry.createdAt).entries + [entry]
-            )
-        )
     }
 
     private func dateString(_ date: Date) -> String {

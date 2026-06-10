@@ -6,7 +6,7 @@ struct ArtifactRouterView: View {
     var body: some View {
         switch artifact.artifactType {
         case "food_cart":
-            FoodCartCard(artifact: artifact)
+            ProposedActionCard(artifact: artifact)
         case "lab_report":
             LabReportCard(artifact: artifact)
         case "chart":

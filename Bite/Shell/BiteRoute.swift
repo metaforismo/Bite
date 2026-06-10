@@ -47,9 +47,32 @@ final class BiteRouter {
     var drawerOpen: Bool = false
     var plusSheetOpen: Bool = false
     var filesSheetOpen: Bool = false
+    var logSheetOpen: Bool = false
+    var healthRecordsSheetOpen: Bool = false
     var prefilledChatPrompt: String?
     var modalSheet: ModalSheet?
     var activeWorkoutSession: WorkoutSessionContext?
+
+    /// One-shot id consumed by `MealsTimelineCard` / similar lists to flash a
+    /// ring-pulse highlight on a freshly-mirrored entry. Cleared after consumption.
+    var pendingHighlightEntryId: UUID?
+
+    /// Last receipt from a Coach-driven mutation. The chat surfaces a
+    /// "View in Today" chip from this; consumed views can read the entry id.
+    var lastToolReceipt: CoachToolReceipt?
+
+    func recordToolReceipt(_ receipt: CoachToolReceipt) {
+        lastToolReceipt = receipt
+    }
+
+    /// Close the chat, switch to the receipt's affected tab, and stage the
+    /// entry id for highlight. Used when the user taps "View in Today".
+    func revealLastReceipt() {
+        guard let receipt = lastToolReceipt else { return }
+        if let tab = receipt.affectedTab { homeTab = tab }
+        pendingHighlightEntryId = receipt.entryId
+        closeOverlay()
+    }
 
     func startWorkoutSession(_ ctx: WorkoutSessionContext) {
         withAnimation(BiteMotion.routeSheet) {
@@ -98,6 +121,27 @@ final class BiteRouter {
 
     func closePlusSheet() {
         withAnimation(BiteMotion.plusSheet) { plusSheetOpen = false }
+    }
+
+    /// Unified entry point for all "log something" actions, surfacing the
+    /// existing modal sheets (hydration/caffeine/cycle/activity/smartAlarm)
+    /// + Coach handoff for food, plus a Files shortcut. Replaces the
+    /// `openChat(thenPlus: true)` workaround on the bottom-pill `+` button.
+    func openLogSheet() {
+        withAnimation(BiteMotion.plusSheet) { logSheetOpen = true }
+    }
+
+    func closeLogSheet() {
+        withAnimation(BiteMotion.plusSheet) { logSheetOpen = false }
+    }
+
+    func openHealthRecords() {
+        drawerOpen = false
+        healthRecordsSheetOpen = true
+    }
+
+    func closeHealthRecords() {
+        healthRecordsSheetOpen = false
     }
 
     func openModal(_ sheet: ModalSheet) {

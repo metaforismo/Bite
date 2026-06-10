@@ -28,7 +28,7 @@ struct HomeBottomTabPill: View {
 
             Button {
                 BiteHaptics.impact(.medium)
-                router.openChat(thenPlus: true)
+                router.openLogSheet()
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 22, weight: .heavy))
@@ -40,6 +40,7 @@ struct HomeBottomTabPill: View {
             .overlay(Circle().stroke(Color.white.opacity(0.8), lineWidth: 1))
             .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 4)
             .glassEffect(in: .circle)
+            .accessibilityLabel("Log something")
         }
     }
 }

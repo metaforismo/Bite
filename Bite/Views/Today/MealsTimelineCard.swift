@@ -5,6 +5,8 @@ struct MealsTimelineCard: View {
     let consumedKcal: Int
     let goalKcal: Int
 
+    @Environment(BiteRouter.self) private var router
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
@@ -25,7 +27,11 @@ struct MealsTimelineCard: View {
                     EmptyMealsRow()
                 } else {
                     ForEach(Array(entries.enumerated()), id: \.element.id) { idx, entry in
-                        MealRow(entry: entry, isLast: idx == entries.count - 1)
+                        MealRow(
+                            entry: entry,
+                            isLast: idx == entries.count - 1,
+                            shouldHighlight: router.pendingHighlightEntryId == entry.id
+                        )
                     }
                 }
             }
@@ -42,6 +48,10 @@ struct MealsTimelineCard: View {
 struct MealRow: View {
     let entry: FoodEntry
     let isLast: Bool
+    var shouldHighlight: Bool = false
+
+    @Environment(BiteRouter.self) private var router
+    @State private var pulse: Bool = false
 
     private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -95,6 +105,38 @@ struct MealRow: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.biteRed.opacity(pulse ? 0.10 : 0))
+                    .padding(.horizontal, 6)
+            )
+            .onChange(of: shouldHighlight) { _, newValue in
+                guard newValue else { return }
+                BiteHaptics.impact(.light)
+                withAnimation(.easeOut(duration: 0.4)) { pulse = true }
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(1400))
+                    withAnimation(.easeIn(duration: 0.6)) { pulse = false }
+                    try? await Task.sleep(for: .milliseconds(800))
+                    if router.pendingHighlightEntryId == entry.id {
+                        router.pendingHighlightEntryId = nil
+                    }
+                }
+            }
+            .onAppear {
+                if shouldHighlight {
+                    BiteHaptics.impact(.light)
+                    withAnimation(.easeOut(duration: 0.4)) { pulse = true }
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(1400))
+                        withAnimation(.easeIn(duration: 0.6)) { pulse = false }
+                        try? await Task.sleep(for: .milliseconds(800))
+                        if router.pendingHighlightEntryId == entry.id {
+                            router.pendingHighlightEntryId = nil
+                        }
+                    }
+                }
+            }
 
             if !isLast {
                 Divider()
