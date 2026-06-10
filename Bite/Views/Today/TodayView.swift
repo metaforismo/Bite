@@ -84,13 +84,12 @@ struct TodayView: View {
                 compactTimelineSection
                 upNextSection
             }
-            .padding(.top, BiteTheme.deviceSafeAreaTop)
-            .padding(.bottom, BiteTheme.bottomFloatingClearance + 56)
             .padding(.horizontal, 0)
         }
         .scrollIndicators(.hidden)
+        .scrollEdgeEffectStyle(.soft, for: .top)
+        .contentMargins(.bottom, 12, for: .scrollContent)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .ignoresSafeArea(.container, edges: .top)
         .task { await refresh() }
         .sheet(isPresented: $showingSleepDetail) {
             SleepDetailView(router: router, lastNightSleepHours: sleepHours)

@@ -40,12 +40,11 @@ struct BiologyView: View {
                 }
                 .padding(.horizontal, 20)
             }
-            .padding(.top, BiteTheme.deviceSafeAreaTop)
-            .padding(.bottom, BiteTheme.bottomFloatingClearance + 56)
         }
         .scrollIndicators(.hidden)
+        .scrollEdgeEffectStyle(.soft, for: .top)
+        .contentMargins(.bottom, 12, for: .scrollContent)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .ignoresSafeArea(.container, edges: .top)
     }
 
     private var biomarkerSummaryStrip: some View {
