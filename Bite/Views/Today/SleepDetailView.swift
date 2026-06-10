@@ -11,6 +11,9 @@ struct SleepDetailView: View {
 
     let lastNightSleepHours: Double?
 
+    @State private var bedtime: Date?
+    @State private var wakeTime: Date?
+
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -44,6 +47,12 @@ struct SleepDetailView: View {
                     Button("Done") { dismiss() }
                         .font(.system(size: 15, weight: .heavy))
                         .foregroundStyle(.white)
+                }
+            }
+            .task {
+                if let interval = await HealthKitService.shared.fetchLastNightSleepInterval() {
+                    bedtime = interval.start
+                    wakeTime = interval.end
                 }
             }
         }
@@ -83,8 +92,8 @@ struct SleepDetailView: View {
 
     private var sleepStats: some View {
         HStack(spacing: 10) {
-            SleepMetricTile(title: "Efficiency", value: efficiencyLabel, delta: "+2%", tint: .biteRingSleep)
-            SleepMetricTile(title: "Consistency", value: "83%", delta: "Stable", tint: .biteHydration)
+            SleepMetricTile(title: "Efficiency", value: "—", delta: "Not measured", tint: .biteRingSleep)
+            SleepMetricTile(title: "Consistency", value: "—", delta: "Not measured", tint: .biteHydration)
             SleepMetricTile(title: "Recovery", value: recoveryImpactLabel, delta: qualityLabel, tint: .biteRingRecovery)
         }
     }
@@ -107,9 +116,9 @@ struct SleepDetailView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 8) {
-                SleepInsightPill(title: "Bedtime", value: "11:18 PM")
-                SleepInsightPill(title: "Wake", value: alarms.first?.formattedWakeTime ?? "7:00 AM")
-                SleepInsightPill(title: "Latency", value: "18 min")
+                SleepInsightPill(title: "Bedtime", value: bedtime.map { $0.formatted(date: .omitted, time: .shortened) } ?? "—")
+                SleepInsightPill(title: "Wake", value: wakeTime.map { $0.formatted(date: .omitted, time: .shortened) } ?? alarms.first?.formattedWakeTime ?? "—")
+                SleepInsightPill(title: "Latency", value: "—")
             }
         }
         .padding(16)
@@ -164,13 +173,6 @@ struct SleepDetailView: View {
         guard let h = lastNightSleepHours else { return "—" }
         let debt = max(0, 8.0 - h)
         return debt == 0 ? "0 min" : "\(Int(debt * 60)) min"
-    }
-
-    private var efficiencyLabel: String {
-        guard let h = lastNightSleepHours else { return "—" }
-        if h >= 7.5 { return "91%" }
-        if h >= 6.5 { return "86%" }
-        return "78%"
     }
 
     private var recoveryImpactLabel: String {

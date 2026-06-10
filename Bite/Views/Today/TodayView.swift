@@ -11,6 +11,9 @@ struct TodayView: View {
     @Query(sort: [SortDescriptor(\SDActivityStatus.startedAt, order: .reverse)])
     private var activityStatuses: [SDActivityStatus]
 
+    @Query(filter: #Predicate<SDDrinkEntry> { $0.kindRaw == "water" })
+    private var allWater: [SDDrinkEntry]
+
     @State private var hrv: Double? = nil
     @State private var rhr: Double? = nil
     @State private var sleepHours: Double? = nil
@@ -38,6 +41,16 @@ struct TodayView: View {
     private var consumedProtein: Double { todayEntries.compactMap(\.nutrition?.protein).reduce(0, +) }
     private var consumedCarbs: Double { todayEntries.compactMap(\.nutrition?.carbs).reduce(0, +) }
     private var consumedFat: Double { todayEntries.compactMap(\.nutrition?.fat).reduce(0, +) }
+    private var consumedFiber: Double { todayEntries.compactMap(\.nutrition?.fiber).reduce(0, +) }
+
+    private var todayWaterML: Double {
+        let day = Calendar.current.startOfDay(for: Date())
+        let next = Calendar.current.date(byAdding: .day, value: 1, to: day) ?? day
+        return allWater
+            .filter { $0.dayStart >= day && $0.dayStart < next }
+            .compactMap(\.volumeML)
+            .reduce(0, +)
+    }
 
     /// Last 7 days of kcal totals (today is the last element). Used for the
     /// trend sparkline below the rings.
@@ -91,6 +104,8 @@ struct TodayView: View {
         .contentMargins(.bottom, 12, for: .scrollContent)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task { await refresh() }
+        .onChange(of: consumedKcal) { writeWidgetSnapshot() }
+        .onChange(of: todayWaterML) { writeWidgetSnapshot() }
         .sheet(isPresented: $showingSleepDetail) {
             SleepDetailView(router: router, lastNightSleepHours: sleepHours)
         }
@@ -118,17 +133,6 @@ struct TodayView: View {
                         .foregroundStyle(.biteInk)
                 }
                 Spacer()
-                Button {} label: {
-                    Image(systemName: "bell")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.biteInk)
-                        .frame(width: 36, height: 36)
-                        .background(Color.white.opacity(0.85), in: Circle())
-                        .overlay(Circle().stroke(Color.black.opacity(0.06), lineWidth: 1))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Notifications")
-
                 Button {
                     BiteHaptics.impact(.light)
                     showingSettings = true
@@ -188,13 +192,6 @@ struct TodayView: View {
                 )
             }
             .buttonStyle(.plain)
-            StatusPill(
-                systemImage: "sun.max.fill",
-                iconColor: Color(hex: 0xF4A532),
-                title: "72°F",
-                sub: "New York, NY",
-                tint: Color(hex: 0xF4A532).opacity(0.12)
-            )
         }
         .padding(.horizontal, 20)
         .padding(.top, 6)
@@ -299,7 +296,7 @@ struct TodayView: View {
                     status: recoveryPct >= 0.75 ? "Ready" : "Recover",
                     color: .biteRingRecovery,
                     progress: recoveryPct,
-                    trend: [40, hrv ?? 0, 55, 48, hrv ?? 0]
+                    trend: []
                 ) {
                     router.openChat(prefill: "Explain my recovery today using HRV, resting heart rate, sleep, and activity.")
                 }
@@ -312,7 +309,7 @@ struct TodayView: View {
                     status: sleepPct >= 0.85 ? "Good" : "Catch up",
                     color: .biteRingSleep,
                     progress: sleepPct,
-                    trend: [6.5, 7.2, sleepHours ?? 0]
+                    trend: []
                 ) {
                     showingSleepDetail = true
                 }
@@ -338,7 +335,7 @@ struct TodayView: View {
                     status: activityPct >= 0.8 ? "Moving" : "Build up",
                     color: .biteCarbs,
                     progress: activityPct,
-                    trend: [0, Double(steps ?? 0) * 0.35, Double(steps ?? 0) * 0.72, Double(steps ?? 0)]
+                    trend: []
                 ) {
                     router.openChat(prefill: "What activity should I do today based on my recovery and goal?")
                 }
@@ -658,7 +655,29 @@ struct TodayView: View {
             self.sleepHours = s
             self.steps = st
             self.activeEnergyKcal = active
+            writeWidgetSnapshot()
         }
+    }
+
+    private func writeWidgetSnapshot() {
+        WidgetSnapshotService.write(
+            BiteWidgetSnapshot(
+                refreshedAt: Date(),
+                nutritionPercent: nutritionPct,
+                recoveryPercent: recoveryPct,
+                sleepPercent: sleepPct,
+                consumedCalories: consumedKcal,
+                calorieGoal: userProfile.calorieGoal,
+                protein: consumedProtein,
+                carbs: consumedCarbs,
+                fat: consumedFat,
+                fiber: consumedFiber,
+                hydrationML: todayWaterML,
+                hydrationGoalML: userProfile.hydrationGoalML,
+                hrv: hrv,
+                rhr: rhr
+            )
+        )
     }
 
     private func streakDays() -> Int {

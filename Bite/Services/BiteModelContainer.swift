@@ -33,11 +33,23 @@ enum BiteModelContainer {
     ])
 
     static let shared: ModelContainer = {
+        try? FileManager.default.createDirectory(
+            at: URL.applicationSupportDirectory,
+            withIntermediateDirectories: true
+        )
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {
-            let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
             return try ModelContainer(for: schema, configurations: [configuration])
         } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
+            let storePath = configuration.url.path
+            for suffix in ["", "-shm", "-wal"] {
+                try? FileManager.default.removeItem(atPath: storePath + suffix)
+            }
+            do {
+                return try ModelContainer(for: schema, configurations: [configuration])
+            } catch {
+                fatalError("Failed to create ModelContainer after store reset: \(error)")
+            }
         }
     }()
 }
