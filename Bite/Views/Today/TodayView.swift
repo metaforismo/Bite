@@ -33,6 +33,26 @@ struct TodayView: View {
     }
 
     private var consumedKcal: Int { todayEntries.compactMap(\.nutrition?.calories).reduce(0, +) }
+    private var consumedProtein: Double { todayEntries.compactMap(\.nutrition?.protein).reduce(0, +) }
+    private var consumedCarbs: Double { todayEntries.compactMap(\.nutrition?.carbs).reduce(0, +) }
+    private var consumedFat: Double { todayEntries.compactMap(\.nutrition?.fat).reduce(0, +) }
+
+    /// Last 7 days of kcal totals (today is the last element). Used for the
+    /// trend sparkline below the rings.
+    private var kcalLast7Days: [Double] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        return (0..<7).reversed().map { offset -> Double in
+            guard let day = cal.date(byAdding: .day, value: -offset, to: today) else { return 0 }
+            let dayStart = cal.startOfDay(for: day)
+            let next = cal.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+            let kcal = allEntries
+                .filter { $0.dayStart >= dayStart && $0.dayStart < next }
+                .compactMap { $0.toStruct().nutrition?.calories }
+                .reduce(0, +)
+            return Double(kcal)
+        }
+    }
     private var nutritionPct: Double {
         guard userProfile.calorieGoal > 0 else { return 0 }
         return min(1, Double(consumedKcal) / Double(userProfile.calorieGoal))
@@ -58,6 +78,7 @@ struct TodayView: View {
                 cycleSection
                 healthMonitorSection
                 mealsSection
+                macroDonutSection
                 hydrationStreakSection
                 upNextSection
             }
@@ -229,8 +250,90 @@ struct TodayView: View {
                 onSleepTap: { showingSleepDetail = true }
             )
             .askCoachContext("Walk me through my rings — what should I focus on today?")
+
+            // 7-day kcal sparkline beneath the rings — quick trend at a glance.
+            if kcalLast7Days.contains(where: { $0 > 0 }) {
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("7-DAY KCAL TREND")
+                            .font(.system(size: 9.5, weight: .bold))
+                            .tracking(0.4)
+                            .foregroundStyle(.biteInkFaint)
+                        Text("\(Int(kcalLast7Days.last ?? 0)) today")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.biteInkMuted)
+                    }
+                    Spacer()
+                    BiteSparkline(values: kcalLast7Days, goal: Double(userProfile.calorieGoal), color: .biteRed, fillArea: true, height: 28)
+                        .frame(width: 120)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.black.opacity(0.04), lineWidth: 1))
+            }
         }
         .padding(.horizontal, 20)
+    }
+
+    /// Macro split donut beneath the meals section — concentric protein/carbs/fat
+    /// rings with kcal total at center, in the dial-style visual language.
+    @ViewBuilder
+    private var macroDonutSection: some View {
+        if consumedKcal > 0 {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("MACROS TODAY")
+                    .font(.system(size: 12, weight: .bold))
+                    .tracking(0.6)
+                    .foregroundStyle(.biteInkMuted)
+                    .padding(.leading, 4)
+
+                HStack(spacing: 16) {
+                    MacroDonut(
+                        kcal: consumedKcal,
+                        goalKcal: userProfile.calorieGoal,
+                        protein: consumedProtein,
+                        carbs: consumedCarbs,
+                        fat: consumedFat
+                    )
+                    .frame(width: 160, height: 160)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        macroLegendRow(color: .biteRed, label: "Protein", value: "\(Int(consumedProtein))g", goal: userProfile.proteinGoal)
+                        macroLegendRow(color: .biteCarbs, label: "Carbs", value: "\(Int(consumedCarbs))g", goal: userProfile.carbsGoal)
+                        macroLegendRow(color: .biteFat, label: "Fat", value: "\(Int(consumedFat))g", goal: userProfile.fatGoal)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(16)
+                .background(Color.white, in: RoundedRectangle(cornerRadius: BiteTheme.cardCornerRadius, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: BiteTheme.cardCornerRadius, style: .continuous).stroke(Color.black.opacity(0.04), lineWidth: 1))
+                .biteShadow(.raised)
+                .askCoachContext("Where am I on macros today vs. my targets?")
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+
+    private func macroLegendRow(color: Color, label: String, value: String, goal: Double) -> some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
+            Text(label)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(.biteInkMuted)
+            Spacer()
+            VStack(alignment: .trailing, spacing: 0) {
+                Text(value)
+                    .font(.system(size: 13, weight: .heavy))
+                    .foregroundStyle(.biteInk)
+                    .monospacedDigit()
+                Text("of \(Int(goal))g")
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .foregroundStyle(.biteInkFaint)
+            }
+        }
     }
 
     private var insightSection: some View {

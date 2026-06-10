@@ -191,6 +191,8 @@ struct BiteShell: View {
                 ActivityStatusSheet(router: router)
             case .smartAlarm:
                 SmartAlarmSheet(router: router)
+            case .sleepDial:
+                SleepDialSheet(router: router)
             case .menstrualLog:
                 MenstrualLogSheet(router: router)
             case .strengthExerciseLibrary:

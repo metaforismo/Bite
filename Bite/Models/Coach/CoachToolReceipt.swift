@@ -9,6 +9,11 @@ struct CoachToolReceipt: Equatable, Sendable {
         case foodAdded
         case foodCorrected
         case foodDiscarded
+        case drinkAdded
+        case activityStatusChanged
+        case cycleEntryAdded
+        case weightLogged
+        case workoutCompleted
     }
 
     let kind: Kind
