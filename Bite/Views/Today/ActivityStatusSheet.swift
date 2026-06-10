@@ -21,12 +21,13 @@ struct ActivityStatusSheet: View {
                 statusOrb
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 14) {
+                        impactPreview
                         choiceList
                         sinceDatePicker
                         noteField
                     }
                 }
-                .frame(maxHeight: 320)
+                .frame(maxHeight: 360)
 
                 saveButton
             }
@@ -96,6 +97,60 @@ struct ActivityStatusSheet: View {
                     }
                 )
             }
+        }
+    }
+
+    private var impactPreview: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("BITE WILL ADAPT")
+                    .font(.system(size: 11, weight: .heavy))
+                    .tracking(0.6)
+                    .foregroundStyle(.biteInkMuted)
+                Spacer()
+                Text(selected.displayName)
+                    .font(.system(size: 11, weight: .heavy))
+                    .foregroundStyle(orbTint(for: selected))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(orbTint(for: selected).opacity(0.12), in: Capsule())
+            }
+
+            VStack(spacing: 8) {
+                StatusImpactRow(systemImage: "figure.strengthtraining.traditional", title: "Training", value: trainingImpact)
+                StatusImpactRow(systemImage: "fork.knife", title: "Nutrition", value: nutritionImpact)
+                StatusImpactRow(systemImage: "brain.head.profile", title: "Coach", value: coachImpact)
+            }
+        }
+        .padding(14)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.black.opacity(0.05), lineWidth: 1))
+    }
+
+    private var trainingImpact: String {
+        switch selected {
+        case .active: return "Normal load"
+        case .sick: return "Rest + mobility"
+        case .injured: return "Scale around injury"
+        case .onBreak: return "Goals paused"
+        }
+    }
+
+    private var nutritionImpact: String {
+        switch selected {
+        case .active: return "Performance targets"
+        case .sick: return "Hydration focus"
+        case .injured: return "Protein + recovery"
+        case .onBreak: return "Maintenance"
+        }
+    }
+
+    private var coachImpact: String {
+        switch selected {
+        case .active: return "Push when ready"
+        case .sick: return "No intensity nudges"
+        case .injured: return "Suggest alternatives"
+        case .onBreak: return "Gentle check-ins"
         }
     }
 
@@ -222,5 +277,30 @@ private struct StatusOptionRow: View {
             }
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct StatusImpactRow: View {
+    let systemImage: String
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(.biteInkMuted)
+                .frame(width: 26, height: 26)
+                .background(Color.black.opacity(0.04), in: Circle())
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.biteInkMuted)
+            Spacer()
+            Text(value)
+                .font(.system(size: 12, weight: .heavy))
+                .foregroundStyle(.biteInk)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
     }
 }

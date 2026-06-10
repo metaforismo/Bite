@@ -45,6 +45,7 @@ struct CaffeineSheet: View {
         ModalSheetContainer(title: "Caffeine", onClose: { router.closeModal() }) {
             VStack(spacing: 18) {
                 gauge
+                caffeineCoachCard
                 quickAdds
                 history
             }
@@ -108,6 +109,76 @@ struct CaffeineSheet: View {
         if fillRatio > 1.0 { return .biteRed }
         if fillRatio > 0.8 { return .biteWarning }
         return .biteCarbs
+    }
+
+    private var caffeineCoachCard: some View {
+        VStack(spacing: 12) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(caffeineStatusTitle)
+                        .font(.system(size: 16, weight: .heavy))
+                        .foregroundStyle(.biteInk)
+                    Text(caffeineStatusSubtitle)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.biteInkMuted)
+                }
+                Spacer()
+                Text("\(Int(max(0, limitMg - totalMg)))")
+                    .font(.system(size: 22, weight: .heavy, design: .rounded))
+                    .foregroundStyle(arcStyle)
+                    .contentTransition(.numericText())
+                Text("mg left")
+                    .font(.system(size: 10, weight: .heavy))
+                    .foregroundStyle(.biteInkMuted)
+            }
+
+            HStack(spacing: 8) {
+                CaffeineInsightPill(title: "Last", value: lastDrinkLabel, tint: .biteCarbs)
+                CaffeineInsightPill(title: "Sleep risk", value: sleepRiskLabel, tint: sleepRiskTint)
+                CaffeineInsightPill(title: "Clearance", value: clearanceLabel, tint: .biteRingRecovery)
+            }
+        }
+        .padding(14)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.black.opacity(0.05), lineWidth: 1))
+    }
+
+    private var caffeineStatusTitle: String {
+        if totalMg == 0 { return "No caffeine logged" }
+        if fillRatio > 1 { return "Over daily limit" }
+        if fillRatio > 0.8 { return "Close to limit" }
+        return "Caffeine in range"
+    }
+
+    private var caffeineStatusSubtitle: String {
+        if totalMg == 0 { return "Log coffee, tea, or energy drinks to protect sleep." }
+        if fillRatio > 1 { return "Bite will bias toward hydration and earlier sleep tonight." }
+        if fillRatio > 0.8 { return "Consider switching to decaf for the next cup." }
+        return "Keep later doses small if sleep quality matters tonight."
+    }
+
+    private var lastDrinkLabel: String {
+        guard let last = todayDrinks.first else { return "None" }
+        return last.timestamp.formatted(date: .omitted, time: .shortened)
+    }
+
+    private var sleepRiskLabel: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        if totalMg == 0 { return "Low" }
+        if hour >= 15 || fillRatio > 0.8 { return "High" }
+        return "Low"
+    }
+
+    private var sleepRiskTint: Color {
+        sleepRiskLabel == "High" ? .biteRed : .biteRingRecovery
+    }
+
+    private var clearanceLabel: String {
+        guard let last = todayDrinks.first else { return "0 h" }
+        let hoursSinceLast = max(0, Date().timeIntervalSince(last.timestamp) / 3600)
+        let remainingWindow = max(0, 5 - hoursSinceLast)
+        if remainingWindow == 0 { return "Clear" }
+        return String(format: "%.1f h", remainingWindow)
     }
 
     private var quickAdds: some View {
@@ -196,5 +267,28 @@ struct CaffeineSheet: View {
         let entry = SDDrinkEntry(kind: .caffeine, caffeineMg: mg, label: label)
         modelContext.insert(entry)
         try? modelContext.save()
+    }
+}
+
+private struct CaffeineInsightPill: View {
+    let title: String
+    let value: String
+    let tint: Color
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(title.uppercased())
+                .font(.system(size: 8.5, weight: .heavy))
+                .tracking(0.4)
+                .foregroundStyle(.biteInkFaint)
+            Text(value)
+                .font(.system(size: 12, weight: .heavy, design: .rounded))
+                .foregroundStyle(.biteInk)
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 9)
+        .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }

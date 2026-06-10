@@ -15,15 +15,17 @@ struct BiologyView: View {
                 BiteTopBar(onBack: nil) { EmptyView() }
                 Group {
                     header
-                    if !biomarkers.isEmpty {
-                        bioAgeOrbit
-                    }
                     BiologicalAgeCard(onRefresh: refreshBioAge)
+                        .askCoachContext("Explain my biological age estimate and the biggest drivers.")
+                    systemsMonitor
                     if bioAgeHistory.count >= 2 {
                         bioAgeTrend
                     }
                     BioAgeBreakdownList()
-                    BioAgeChart3D()
+                    if !biomarkers.isEmpty {
+                        biomarkerSummaryStrip
+                        bioAgeOrbit
+                    }
                     Text("BIOMARKERS")
                         .font(.system(size: 12, weight: .bold))
                         .tracking(0.6)
@@ -44,6 +46,75 @@ struct BiologyView: View {
         .scrollIndicators(.hidden)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(.container, edges: .top)
+    }
+
+    private var biomarkerSummaryStrip: some View {
+        let inRange = biomarkers.filter { $0.status == .inRange }.count
+        let flagged = biomarkers.count - inRange
+        return HStack(spacing: 10) {
+            biologyStat("Tracked", "\(biomarkers.count)", .biteInk)
+            biologyStat("In range", "\(inRange)", .biteRingRecovery)
+            biologyStat("Flagged", "\(flagged)", flagged == 0 ? .biteRingRecovery : .biteRed)
+        }
+    }
+
+    private var systemsMonitor: some View {
+        let bloodCount = biomarkers.filter { $0.category.localizedCaseInsensitiveContains("blood") || $0.category.localizedCaseInsensitiveContains("cbc") }.count
+        let metabolicCount = biomarkers.filter { $0.category.localizedCaseInsensitiveContains("metabolic") || $0.category.localizedCaseInsensitiveContains("lipid") || $0.category.localizedCaseInsensitiveContains("glucose") }.count
+        let flagged = biomarkers.filter { $0.status == .high || $0.status == .low }.count
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("HEALTH SYSTEMS")
+                        .font(.system(size: 10, weight: .heavy))
+                        .tracking(0.6)
+                        .foregroundStyle(.biteInkFaint)
+                    Text(flagged == 0 ? "No flagged lab drivers" : "\(flagged) lab driver\(flagged == 1 ? "" : "s") to review")
+                        .font(.system(size: 16, weight: .heavy))
+                        .foregroundStyle(.biteInk)
+                }
+                Spacer()
+                Button {
+                    router.openChat(prefill: "Review my health systems from sleep, activity, bloodwork, biomarkers, and recent files.")
+                } label: {
+                    Text("Review")
+                        .font(.system(size: 12, weight: .heavy))
+                        .foregroundStyle(.biteInk)
+                        .padding(.horizontal, 12)
+                        .frame(height: 32)
+                        .background(Color.black.opacity(0.05), in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+
+            VStack(spacing: 8) {
+                BiologySystemRow(icon: "moon.zzz.fill", title: "Sleep", detail: "Apple Health primary", status: "Pending", tint: .biteRingSleep)
+                BiologySystemRow(icon: "figure.walk", title: "Activity", detail: "Steps, energy, workouts", status: "Live", tint: .biteRingRecovery)
+                BiologySystemRow(icon: "drop.fill", title: "Blood", detail: "\(bloodCount) markers indexed", status: bloodCount == 0 ? "Needs labs" : "Tracked", tint: .biteRed)
+                BiologySystemRow(icon: "chart.line.uptrend.xyaxis", title: "Metabolic", detail: "\(metabolicCount) markers indexed", status: metabolicCount == 0 ? "Needs labs" : "Tracked", tint: .biteCarbs)
+            }
+        }
+        .padding(16)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: BiteTheme.cardCornerRadius, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: BiteTheme.cardCornerRadius, style: .continuous).stroke(Color.black.opacity(0.04), lineWidth: 1))
+        .biteShadow(.raised)
+    }
+
+    private func biologyStat(_ label: String, _ value: String, _ color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label.uppercased())
+                .font(.system(size: 9.5, weight: .heavy))
+                .foregroundStyle(.biteInkFaint)
+            Text(value)
+                .font(.system(size: 20, weight: .heavy, design: .rounded))
+                .foregroundStyle(color)
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(Color.black.opacity(0.05), lineWidth: 1))
     }
 
     /// Marquee biomarker orbit. Each marker becomes a tiny indicator at
@@ -87,6 +158,7 @@ struct BiologyView: View {
             }
         }
         .frame(maxWidth: 280, maxHeight: 280)
+        .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
         .askCoachContext("Walk me through my biomarker panel — anything I should look at?")
     }
@@ -218,6 +290,42 @@ private struct BiomarkerCategorySection: View {
                 ForEach(markers) { BiomarkerRow(marker: $0) }
             }
         }
+    }
+}
+
+private struct BiologySystemRow: View {
+    let icon: String
+    let title: String
+    let detail: String
+    let status: String
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 11) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(tint)
+                .frame(width: 32, height: 32)
+                .background(tint.opacity(0.12), in: Circle())
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 13, weight: .heavy))
+                    .foregroundStyle(.biteInk)
+                Text(detail)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.biteInkMuted)
+                    .lineLimit(1)
+            }
+            Spacer()
+            Text(status)
+                .font(.system(size: 10.5, weight: .heavy))
+                .foregroundStyle(tint)
+                .padding(.horizontal, 8)
+                .frame(height: 24)
+                .background(tint.opacity(0.10), in: Capsule())
+        }
+        .padding(10)
+        .background(Color.black.opacity(0.03), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 

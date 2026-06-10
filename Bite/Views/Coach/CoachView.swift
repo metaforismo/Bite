@@ -1,5 +1,8 @@
 import SwiftUI
 import SwiftData
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct CoachView: View {
     @Bindable var router: BiteRouter
@@ -12,7 +15,9 @@ struct CoachView: View {
 
     @State private var input: String = ""
     @State private var chat: CoachChatViewModel?
-    @FocusState private var inputFocused: Bool
+    @State private var inputFocused: Bool = false
+    @State private var composerInputHeight: CGFloat = 22
+    @State private var selectedAgentMode: AgentMode = .auto
 
     private var orbState: OrbState {
         guard let chat else { return .idle }
@@ -44,6 +49,13 @@ struct CoachView: View {
         return trimmed.isEmpty ? "What's up?" : "What's up, \(trimmed)?"
     }
 
+    private var shouldShowHero: Bool {
+        guard let chat else { return true }
+        let hasPersistedMessages = !(chat.thread?.messages.isEmpty ?? true)
+        let hasLiveWork = !chat.streamingText.isEmpty || !chat.thinkingSteps.isEmpty || chat.isStreaming
+        return !hasPersistedMessages && !hasLiveWork && chat.mode == .idle
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -56,10 +68,32 @@ struct CoachView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(.container, edges: .top)
         .onAppear {
-            if chat == nil {
-                let api = BiteAPIClient(auth: AuthService.shared)
-                let remote = RemoteAIService(api: api)
-                chat = CoachChatViewModel(modelContext: modelContext, remote: remote, auth: AuthService.shared)
+            ensureChat()
+            if let requested = router.requestedCoachThread {
+                chat?.openThread(requested)
+            }
+            if router.route == .chat {
+                focusComposerAfterOpen()
+            }
+        }
+        .onChange(of: router.requestedCoachThread?.id) { _, _ in
+            ensureChat()
+            if let requested = router.requestedCoachThread {
+                input = ""
+                chat?.openThread(requested)
+            }
+        }
+        .onChange(of: router.newChatRequestID) { _, _ in
+            ensureChat()
+            input = ""
+            chat?.resetForNewThread()
+            focusComposerAfterOpen()
+        }
+        .onChange(of: router.route) { _, route in
+            if route == .chat {
+                focusComposerAfterOpen()
+            } else {
+                inputFocused = false
             }
         }
         .onChange(of: router.prefilledChatPrompt) { _, value in
@@ -80,7 +114,10 @@ struct CoachView: View {
         BiteTopBar(onBack: nil) {
             HStack {
                 Button { router.toggleDrawer() } label: {
-                    chromeButtonLabel(systemImage: "line.3.horizontal")
+                    chromeButtonLabel {
+                        TwoLineHamburgerIcon()
+                            .foregroundStyle(.biteInk)
+                    }
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Threads")
@@ -117,9 +154,15 @@ struct CoachView: View {
     /// buttons sit at the exact same vertical position inside the BiteTopBar
     /// row, mirrored across the centerline.
     private func chromeButtonLabel(systemImage: String) -> some View {
-        Image(systemName: systemImage)
-            .font(.system(size: 18, weight: .semibold))
-            .foregroundStyle(.biteInk)
+        chromeButtonLabel {
+            Image(systemName: systemImage)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.biteInk)
+        }
+    }
+
+    private func chromeButtonLabel<Icon: View>(@ViewBuilder icon: () -> Icon) -> some View {
+        icon()
             .frame(
                 width: BiteTheme.topBarButtonSize,
                 height: BiteTheme.topBarButtonSize
@@ -132,7 +175,7 @@ struct CoachView: View {
     private var transcriptScroll: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                if chat?.mode == .idle || chat == nil {
+                if shouldShowHero {
                     heroOrb
                 } else {
                     transcript
@@ -159,6 +202,7 @@ struct CoachView: View {
                 .foregroundStyle(.biteInk)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
+            agentCapabilityStrip
             Spacer().frame(height: 12)
         }
         .frame(maxWidth: .infinity)
@@ -177,8 +221,16 @@ struct CoachView: View {
                 if !chat.thinkingSteps.isEmpty {
                     ThinkingCascade(steps: chat.thinkingSteps)
                 }
+                if chat.isStreaming && (!chat.recentToolActivities.isEmpty || chat.activeToolName != nil) {
+                    AgentActivityStrip(activities: chat.recentToolActivities)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
                 if !chat.streamingText.isEmpty, chat.mode == .response {
                     AssistantText(text: chat.streamingText)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                if !chat.researchCitations.isEmpty {
+                    ResearchCitationStrip(citations: chat.researchCitations)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
                 if let error = chat.lastError, chat.mode == .error {
@@ -198,6 +250,7 @@ struct CoachView: View {
             }
             .animation(BiteMotion.bubbleRise, value: chat.streamingText)
             .animation(BiteMotion.bubbleRise, value: chat.thinkingSteps.count)
+            .animation(BiteMotion.bubbleRise, value: chat.recentToolActivities)
             .animation(BiteMotion.bubbleRise, value: chat.lastInlineReceipt?.timestamp)
         }
     }
@@ -217,9 +270,23 @@ struct CoachView: View {
         }
     }
 
+    private var agentCapabilityStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                AgentCapabilityChip(systemImage: "waveform.path.ecg", title: "Health data")
+                AgentCapabilityChip(systemImage: "doc.text.magnifyingglass", title: "Files")
+                AgentCapabilityChip(systemImage: "book.closed.fill", title: "Research")
+                AgentCapabilityChip(systemImage: "brain.head.profile", title: "Memory")
+            }
+            .padding(.horizontal, 24)
+        }
+        .scrollDisabled(true)
+        .padding(.top, 4)
+    }
+
     private var quickActions: some View {
         Group {
-            if chat?.mode == .idle || chat == nil {
+            if shouldShowHero {
                 GlassEffectContainer(spacing: 6) {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
@@ -302,70 +369,426 @@ struct CoachView: View {
     }
 
     private var composer: some View {
-        HStack(spacing: 7) {
-            Button {
-                router.openPlusSheet()
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.biteInk)
-                    .frame(width: 36, height: 36)
-                    .background(Color.white, in: Circle())
-                    .shadow(color: .black.opacity(0.06), radius: 1, x: 0, y: 1)
+        let expanded = composerExpanded
+        let cornerRadius: CGFloat = expanded ? 25 : BiteTheme.pillCornerRadius
+
+        return VStack(alignment: .leading, spacing: expanded ? 8 : 0) {
+            if expanded {
+                agentModeStrip
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
-            .buttonStyle(.plain)
 
-            TextField("Ask Bite anything", text: $input)
-                .font(.system(size: 15))
-                .foregroundStyle(.biteInk)
-                .focused($inputFocused)
-                .submitLabel(.send)
-                .onSubmit(submit)
-
-            Button {} label: {
-                Image(systemName: "mic")
-                    .font(.system(size: 18, weight: .regular))
-                    .foregroundStyle(.biteInkMuted)
-                    .frame(width: 28, height: 28)
-            }
-            .buttonStyle(.plain)
-
-            if chat?.isStreaming == true {
-                Button(action: { chat?.cancelStream() }) {
-                    Image(systemName: "stop.fill")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
+            HStack(alignment: .bottom, spacing: 7) {
+                Button {
+                    router.openPlusSheet()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.biteInk)
                         .frame(width: 36, height: 36)
-                        .background(.biteInk, in: Circle())
+                        .background(Color.white.opacity(0.95), in: Circle())
+                        .shadow(color: .black.opacity(0.06), radius: 1, x: 0, y: 1)
                 }
                 .buttonStyle(.plain)
-            } else {
-                Button(action: submit) {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 36, height: 36)
-                        .background(input.isEmpty ? Color(hex: 0xE5E5EA) : .biteRed, in: Circle())
+
+                composerTextInput
+                    .padding(.vertical, 7)
+                    .frame(minHeight: 36)
+
+                Button {} label: {
+                    Image(systemName: "mic")
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundStyle(.biteInkMuted)
+                        .frame(width: 30, height: 36)
                 }
                 .buttonStyle(.plain)
-                .disabled(input.isEmpty)
+
+                if chat?.isStreaming == true {
+                    Button(action: { chat?.cancelStream() }) {
+                        Image(systemName: "stop.fill")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 36, height: 36)
+                            .background(.biteInk, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Button(action: submit) {
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 36, height: 36)
+                            .background(sendDisabled ? Color.biteInk.opacity(0.24) : Color.biteInk, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(sendDisabled)
+                }
             }
         }
-        .padding(.horizontal, 8)
-        .frame(height: BiteTheme.composerHeight)
-        .background(Color.white.opacity(0.85), in: Capsule())
-        .overlay(Capsule().stroke(Color.white.opacity(0.7), lineWidth: 1))
-        .shadow(color: .black.opacity(0.08), radius: 20, x: 0, y: 4)
-        .glassEffect(in: .capsule)
+        .padding(.leading, 8)
+        .padding(.trailing, 7)
+        .padding(.vertical, expanded ? 8 : 7)
+        .background {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.92),
+                            Color.biteRedTint.opacity(0.54),
+                            Color.white.opacity(0.84)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        }
+        .overlay(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).stroke(Color.white.opacity(0.86), lineWidth: 1))
+        .shadow(color: Color.biteRed.opacity(0.12), radius: 26, x: 0, y: 9)
+        .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 5)
+        .glassEffect(in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .matchedGeometryEffect(id: "composer", in: morphNS)
         .padding(.horizontal, 16)
         .padding(.bottom, 20)
+        .animation(BiteMotion.chatMorph, value: expanded)
+        .animation(BiteMotion.chatMorph, value: composerInputHeight)
+    }
+
+    private var composerTextInput: some View {
+        ZStack(alignment: .topLeading) {
+            if input.isEmpty {
+                Text("Ask Bite anything")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(.biteInkFaint)
+                    .padding(.top, 1)
+                    .allowsHitTesting(false)
+            }
+            ExpandingCoachTextView(
+                text: $input,
+                isFocused: $inputFocused,
+                dynamicHeight: $composerInputHeight,
+                onSubmit: submit
+            )
+            .frame(height: composerInputHeight)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var composerExpanded: Bool {
+        inputFocused || !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || chat?.isStreaming == true
+    }
+
+    private var sendDisabled: Bool {
+        input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var agentModeStrip: some View {
+        HStack(spacing: 6) {
+            ForEach(AgentMode.allCases, id: \.self) { mode in
+                Button {
+                    BiteHaptics.selection()
+                    selectedAgentMode = mode
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: mode.icon)
+                            .font(.system(size: 10.5, weight: .bold))
+                        Text(mode.title)
+                            .font(.system(size: 11.5, weight: .heavy))
+                    }
+                    .foregroundStyle(selectedAgentMode == mode ? .white : .biteInkMuted)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 6)
+                    .background(selectedAgentMode == mode ? Color.biteInk : Color.white.opacity(0.62), in: Capsule())
+                    .overlay(Capsule().stroke(Color.black.opacity(selectedAgentMode == mode ? 0 : 0.05), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func ensureChat() {
+        guard chat == nil else { return }
+        let api = BiteAPIClient(auth: AuthService.shared)
+        let remote = RemoteAIService(api: api)
+        chat = CoachChatViewModel(modelContext: modelContext, remote: remote, auth: AuthService.shared)
+    }
+
+    private func focusComposerAfterOpen() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(420))
+            inputFocused = true
+        }
     }
 
     private func submit() {
-        let text = input.trimmingCharacters(in: .whitespaces)
+        let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, let chat else { return }
         input = ""
-        chat.send(text)
+        composerInputHeight = 22
+        chat.send(text, contextHint: selectedAgentMode.contextHint)
     }
 }
+
+private enum AgentMode: CaseIterable {
+    case auto, research, files, health
+
+    var title: String {
+        switch self {
+        case .auto: return "Auto"
+        case .research: return "Research"
+        case .files: return "Files"
+        case .health: return "Health"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .auto: return "sparkles"
+        case .research: return "book.closed.fill"
+        case .files: return "doc.text.magnifyingglass"
+        case .health: return "waveform.path.ecg"
+        }
+    }
+
+    var contextHint: String? {
+        switch self {
+        case .auto:
+            return nil
+        case .research:
+            return "Agent routing hint: prioritize the research_science tool for scientific claims, mechanisms, protocols, and source-backed recommendations. Return concise clickable citations."
+        case .files:
+            return "Agent routing hint: prioritize uploaded files, health records, and document context before giving advice. If no relevant file is available, say what would help."
+        case .health:
+            return "Agent routing hint: prioritize the user's health snapshot, logged food, sleep, recovery, activity status, and Apple Health-derived metrics when reasoning."
+        }
+    }
+}
+
+private struct AgentCapabilityChip: View {
+    let systemImage: String
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: systemImage)
+                .font(.system(size: 11, weight: .bold))
+            Text(title)
+                .font(.system(size: 11.5, weight: .heavy))
+        }
+        .foregroundStyle(.biteInkMuted)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(Color.white.opacity(0.58), in: Capsule())
+        .overlay(Capsule().stroke(Color.white.opacity(0.72), lineWidth: 1))
+    }
+}
+
+private struct AgentActivityStrip: View {
+    let activities: [CoachChatViewModel.ToolActivity]
+
+    var body: some View {
+        HStack(spacing: 8) {
+            BiteOrbImage(size: 26, mood: .think, state: hasRunningTool ? .thinking : .idle, showHalo: false)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(hasRunningTool ? "Bite is working" : "Agent actions")
+                    .font(.system(size: 12, weight: .heavy))
+                    .foregroundStyle(.biteInk)
+                HStack(spacing: 6) {
+                    ForEach(activities.prefix(3)) { activity in
+                        AgentActivityPill(activity: activity)
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(Color.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.82), lineWidth: 1))
+    }
+
+    private var hasRunningTool: Bool {
+        activities.contains { $0.status == .running }
+    }
+}
+
+private struct AgentActivityPill: View {
+    let activity: CoachChatViewModel.ToolActivity
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 9, weight: .bold))
+            Text(activity.label)
+                .font(.system(size: 10.5, weight: .bold))
+                .lineLimit(1)
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(tint.opacity(0.10), in: Capsule())
+    }
+
+    private var tint: Color {
+        switch activity.status {
+        case .running: return .biteCarbs
+        case .done: return .biteRingRecovery
+        case .failed: return .biteRed
+        }
+    }
+
+    private var icon: String {
+        switch activity.status {
+        case .running: return "arrow.triangle.2.circlepath"
+        case .done: return "checkmark"
+        case .failed: return "exclamationmark"
+        }
+    }
+}
+
+private struct TwoLineHamburgerIcon: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            RoundedRectangle(cornerRadius: 1, style: .continuous)
+                .frame(width: 20, height: 2)
+            RoundedRectangle(cornerRadius: 1, style: .continuous)
+                .frame(width: 10, height: 2)
+        }
+        .frame(width: 20, height: 14, alignment: .leading)
+    }
+}
+
+#if canImport(UIKit)
+private struct ExpandingCoachTextView: UIViewRepresentable {
+    @Binding var text: String
+    @Binding var isFocused: Bool
+    @Binding var dynamicHeight: CGFloat
+    var onSubmit: () -> Void
+
+    private let minVisibleLines: CGFloat = 1
+    private let maxVisibleLines: CGFloat = 5
+
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView(frame: .zero, textContainer: nil)
+        textView.delegate = context.coordinator
+        textView.backgroundColor = .clear
+        textView.textColor = UIColor(Color.biteInk)
+        textView.font = UIFont.systemFont(ofSize: 15, weight: .medium)
+        textView.adjustsFontForContentSizeCategory = true
+        textView.textContainerInset = .zero
+        textView.textContainer.lineFragmentPadding = 0
+        textView.textContainer.widthTracksTextView = true
+        textView.autocapitalizationType = .sentences
+        textView.autocorrectionType = .default
+        textView.returnKeyType = .send
+        textView.enablesReturnKeyAutomatically = true
+        textView.isScrollEnabled = false
+        textView.showsVerticalScrollIndicator = false
+        textView.alwaysBounceVertical = false
+        textView.keyboardDismissMode = .none
+        textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        textView.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        context.coordinator.updateHeight(textView, force: true)
+        return textView
+    }
+
+    func updateUIView(_ uiView: UITextView, context: Context) {
+        context.coordinator.text = $text
+        context.coordinator.isFocused = $isFocused
+        context.coordinator.dynamicHeight = $dynamicHeight
+        context.coordinator.onSubmit = onSubmit
+
+        if uiView.text != text {
+            uiView.text = text
+        }
+        if isFocused, !uiView.isFirstResponder {
+            DispatchQueue.main.async {
+                uiView.becomeFirstResponder()
+            }
+        } else if !isFocused, uiView.isFirstResponder {
+            DispatchQueue.main.async {
+                uiView.resignFirstResponder()
+            }
+        }
+        context.coordinator.updateHeight(uiView, force: false)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(
+            text: $text,
+            isFocused: $isFocused,
+            dynamicHeight: $dynamicHeight,
+            onSubmit: onSubmit,
+            minVisibleLines: minVisibleLines,
+            maxVisibleLines: maxVisibleLines
+        )
+    }
+
+    final class Coordinator: NSObject, UITextViewDelegate {
+        var text: Binding<String>
+        var isFocused: Binding<Bool>
+        var dynamicHeight: Binding<CGFloat>
+        var onSubmit: () -> Void
+        private let minVisibleLines: CGFloat
+        private let maxVisibleLines: CGFloat
+
+        init(
+            text: Binding<String>,
+            isFocused: Binding<Bool>,
+            dynamicHeight: Binding<CGFloat>,
+            onSubmit: @escaping () -> Void,
+            minVisibleLines: CGFloat,
+            maxVisibleLines: CGFloat
+        ) {
+            self.text = text
+            self.isFocused = isFocused
+            self.dynamicHeight = dynamicHeight
+            self.onSubmit = onSubmit
+            self.minVisibleLines = minVisibleLines
+            self.maxVisibleLines = maxVisibleLines
+        }
+
+        func textViewDidBeginEditing(_ textView: UITextView) {
+            isFocused.wrappedValue = true
+        }
+
+        func textViewDidEndEditing(_ textView: UITextView) {
+            isFocused.wrappedValue = false
+        }
+
+        func textViewDidChange(_ textView: UITextView) {
+            text.wrappedValue = textView.text ?? ""
+            updateHeight(textView, force: true)
+        }
+
+        func textView(
+            _ textView: UITextView,
+            shouldChangeTextIn range: NSRange,
+            replacementText replacement: String
+        ) -> Bool {
+            if replacement == "\n" {
+                onSubmit()
+                return false
+            }
+            return true
+        }
+
+        func updateHeight(_ textView: UITextView, force: Bool) {
+            let lineHeight = textView.font?.lineHeight ?? 18
+            let minHeight = ceil(lineHeight * minVisibleLines)
+            let maxHeight = ceil(lineHeight * maxVisibleLines)
+            let width = max(textView.bounds.width, 1)
+            let measured = ceil(textView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height)
+            let nextHeight = min(max(measured, minHeight), maxHeight)
+            let shouldScroll = measured > maxHeight + 1
+            if textView.isScrollEnabled != shouldScroll {
+                textView.isScrollEnabled = shouldScroll
+            }
+            guard force || abs(dynamicHeight.wrappedValue - nextHeight) > 0.5 else { return }
+            DispatchQueue.main.async {
+                if abs(self.dynamicHeight.wrappedValue - nextHeight) > 0.5 {
+                    self.dynamicHeight.wrappedValue = nextHeight
+                }
+            }
+        }
+    }
+}
+#endif

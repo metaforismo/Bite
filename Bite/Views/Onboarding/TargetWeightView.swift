@@ -5,93 +5,36 @@ struct TargetWeightView: View {
     let onContinue: () -> Void
 
     var body: some View {
-        VStack(spacing: 32) {
-            Spacer()
-
-            VStack(spacing: 12) {
-                Image(systemName: "target")
-                    .font(.system(size: 48))
-                    .foregroundStyle(Color.biteRed)
-
-                Text("Target weight")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-
-                Text("What weight would you like to reach?")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-            }
-
-            VStack(spacing: 16) {
-                HStack(spacing: 16) {
-                    Button {
-                        adjustWeight(by: -1)
-                    } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .font(.system(size: 36))
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-
-                    VStack(spacing: 2) {
-                        TextField("70", text: $vm.targetWeightKg)
-                            .font(.system(size: 56, weight: .bold, design: .rounded))
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.center)
-                            .frame(width: 160)
-
-                        Text("kg")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .fontWeight(.medium)
-                    }
-
-                    Button {
-                        adjustWeight(by: 1)
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 36))
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                if let currentWeight = Double(vm.weightKg),
-                   let targetWeight = Double(vm.targetWeightKg),
-                   currentWeight > 0, targetWeight > 0 {
-                    let diff = currentWeight - targetWeight
-                    Text(diff > 0
-                        ? "Lose \(String(format: "%.1f", abs(diff))) kg"
-                        : diff < 0
-                        ? "Gain \(String(format: "%.1f", abs(diff))) kg"
-                        : "Maintain weight"
-                    )
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                }
-            }
-            .padding(24)
-            .background(.ultraThinMaterial, in: .rect(cornerRadius: 20))
-            .padding(.horizontal, 24)
-
-            Spacer()
-
-            Button {
-                onContinue()
-            } label: {
-                Text("Continue")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.biteRed)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .padding(.horizontal, 24)
-            .padding(.bottom, 48)
+        OnboardingScaffold(
+            iconSystemName: "target",
+            iconColor: .biteRed,
+            title: "Target weight",
+            subtitle: "What weight would you like to reach?"
+        ) {
+            OnboardingNumberCard(
+                value: $vm.targetWeightKg,
+                placeholder: "70",
+                unit: "kg",
+                allowsDecimal: true,
+                decrement: { adjustWeight(by: -1) },
+                increment: { adjustWeight(by: 1) },
+                footnote: targetDeltaText
+            )
+        } primaryAction: {
+            onContinue()
         }
         .scrollDismissesKeyboard(.interactively)
+    }
+
+    private var targetDeltaText: String? {
+        guard let currentWeight = Double(vm.weightKg),
+              let targetWeight = Double(vm.targetWeightKg),
+              currentWeight > 0,
+              targetWeight > 0 else { return nil }
+        let diff = currentWeight - targetWeight
+        if diff > 0 { return "Lose \(String(format: "%.1f", abs(diff))) kg" }
+        if diff < 0 { return "Gain \(String(format: "%.1f", abs(diff))) kg" }
+        return "Maintain weight"
     }
 
     private func adjustWeight(by amount: Double) {

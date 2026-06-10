@@ -193,6 +193,61 @@ struct PressableProminentButtonStyle: ButtonStyle {
     }
 }
 
+struct OnboardingNumberCard: View {
+    @Binding var value: String
+    let placeholder: String
+    let unit: String
+    let allowsDecimal: Bool
+    let decrement: () -> Void
+    let increment: () -> Void
+    var footnote: String? = nil
+
+    var body: some View {
+        VStack(spacing: 14) {
+            HStack(spacing: 16) {
+                stepButton("minus", action: decrement)
+                VStack(spacing: 2) {
+                    TextField(placeholder, text: $value)
+                        .font(.system(size: 56, weight: .heavy, design: .rounded))
+                        .keyboardType(allowsDecimal ? .decimalPad : .numberPad)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.biteInk)
+                        .frame(width: 150)
+                        .minimumScaleFactor(0.65)
+                    Text(unit)
+                        .font(.system(size: 14, weight: .heavy))
+                        .foregroundStyle(.biteInkMuted)
+                }
+                stepButton("plus", action: increment)
+            }
+            if let footnote {
+                Text(footnote)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.biteInkMuted)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(22)
+        .background(Color.white.opacity(0.84), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.black.opacity(0.05), lineWidth: 1))
+        .biteShadow(.raised)
+    }
+
+    private func stepButton(_ systemImage: String, action: @escaping () -> Void) -> some View {
+        Button {
+            BiteHaptics.selection()
+            action()
+        } label: {
+            Image(systemName: systemImage)
+                .font(.system(size: 21, weight: .bold))
+                .foregroundStyle(.biteInk)
+                .frame(width: 50, height: 50)
+                .background(Color.black.opacity(0.05), in: Circle())
+        }
+        .buttonStyle(PressableScaleButtonStyle(pressedScale: 0.94))
+    }
+}
+
 #Preview {
     ZStack {
         BiteGradientBackground(style: .today)

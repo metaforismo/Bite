@@ -11,6 +11,7 @@ enum BiteModelContainer {
         SDSavedFoodEntry.self,
         SDActivityStatus.self,
         SDDrinkEntry.self,
+        SDJournalEntry.self,
         SDCycleEntry.self,
         SDSmartAlarm.self,
         SDStrengthSession.self,

@@ -39,6 +39,7 @@ import { computeBiologicalAgeTool } from "./computeBiologicalAge";
 import { classifyJournalEntryTool } from "./classifyJournalEntry";
 import { analyzeImpactByTagTool } from "./analyzeImpactByTag";
 import { addWeightEntryTool } from "./addWeightEntry";
+import { researchScienceTool } from "./researchScience";
 
 /** Every tool the agent can call. Ordering does not matter to the model. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -72,6 +73,7 @@ export const ALL_TOOLS: ToolDefinition<any, any>[] = [
   classifyJournalEntryTool,
   analyzeImpactByTagTool,
   addWeightEntryTool,
+  researchScienceTool,
 ];
 
 export interface DispatchResult {

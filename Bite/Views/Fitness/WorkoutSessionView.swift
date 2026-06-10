@@ -14,6 +14,9 @@ struct WorkoutSessionView: View {
     @State private var session: SDStrengthSession
     @State private var showingPlateFor: PlateBindingTarget?
     @State private var showingDiscardConfirm = false
+    @State private var showingAddExercise = false
+    @State private var newExerciseName = ""
+    @State private var extraExercises: [WorkoutSessionContext.Exercise] = []
 
     init(context: WorkoutSessionContext, onFinish: @escaping () -> Void) {
         self.context = context
@@ -39,13 +42,26 @@ struct WorkoutSessionView: View {
                 .ignoresSafeArea()
 
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: 10) {
                     header
+                    sessionProgress
                     exerciseList
-                    Spacer(minLength: 80)
+                    Button {
+                        showingAddExercise = true
+                    } label: {
+                        Label("Add exercise", systemImage: "plus")
+                            .font(.system(size: 14, weight: .heavy))
+                            .foregroundStyle(.biteInk)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                            .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.black.opacity(0.05), lineWidth: 1))
+                    }
+                    .buttonStyle(PressableScaleButtonStyle(pressedScale: 0.98))
+                    Spacer(minLength: 92)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
             }
 
             finishBar
@@ -63,27 +79,44 @@ struct WorkoutSessionView: View {
             )
             .presentationDetents([.medium, .large])
         }
+        .sheet(isPresented: $showingAddExercise) {
+            addExerciseSheet
+                .presentationDetents([.height(240)])
+                .presentationDragIndicator(.visible)
+        }
     }
 
     private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(session.title)
-                    .font(.system(size: 22, weight: .heavy, design: .rounded))
+                    .font(.system(size: 18, weight: .heavy, design: .rounded))
                     .foregroundStyle(.biteInk)
+                    .lineLimit(1)
                 TimelineView(.periodic(from: session.startedAt, by: 1)) { context in
                     Text(formatElapsed(context.date.timeIntervalSince(session.startedAt)))
-                        .font(.system(size: 13, weight: .heavy, design: .rounded))
+                        .font(.system(size: 28, weight: .heavy, design: .rounded))
                         .foregroundStyle(.biteInkMuted)
                         .monospacedDigit()
                 }
             }
             Spacer()
             Button {
+                finish()
+            } label: {
+                Text("Finish")
+                    .font(.system(size: 13, weight: .heavy))
+                    .foregroundStyle(.biteRed)
+                    .padding(.horizontal, 13)
+                    .frame(height: 34)
+                    .background(Color.biteRed.opacity(0.10), in: Capsule())
+            }
+            .buttonStyle(PressableScaleButtonStyle(pressedScale: 0.96))
+            Button {
                 showingDiscardConfirm = true
             } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 16, weight: .heavy))
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 17, weight: .heavy))
                     .foregroundStyle(.biteInk)
                     .frame(width: 36, height: 36)
                     .background(Circle().fill(Color.white.opacity(0.92)))
@@ -93,9 +126,31 @@ struct WorkoutSessionView: View {
         }
     }
 
+    private var sessionProgress: some View {
+        let total = max(1, session.sets.count)
+        let done = session.sets.filter { $0.completedAt != nil }.count
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("\(done)/\(total) sets")
+                    .font(.system(size: 13, weight: .heavy))
+                    .foregroundStyle(.biteInk)
+                    .monospacedDigit()
+                Spacer()
+                Text("\(activeExercises.count) exercises")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.biteInkMuted)
+            }
+            ProgressView(value: Double(done), total: Double(total))
+                .tint(.biteRingRecovery)
+        }
+        .padding(12)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.black.opacity(0.05), lineWidth: 1))
+    }
+
     private var exerciseList: some View {
-        VStack(spacing: 14) {
-            ForEach(context.exercises) { exercise in
+        VStack(spacing: 10) {
+            ForEach(activeExercises) { exercise in
                 ExerciseSection(
                     exercise: exercise,
                     sets: setsFor(exercise),
@@ -104,7 +159,8 @@ struct WorkoutSessionView: View {
                     },
                     onComplete: { setID in
                         completeSet(setID: setID, restSec: exercise.restSec)
-                    }
+                    },
+                    onAddSet: { addSet(to: exercise) }
                 )
             }
         }
@@ -129,6 +185,10 @@ struct WorkoutSessionView: View {
         .padding(.bottom, 24)
     }
 
+    private var activeExercises: [WorkoutSessionContext.Exercise] {
+        context.exercises + extraExercises
+    }
+
     private func setsFor(_ exercise: WorkoutSessionContext.Exercise) -> [SDStrengthSet] {
         session.sets
             .filter { $0.exerciseName == exercise.name }
@@ -150,6 +210,59 @@ struct WorkoutSessionView: View {
         if let row = session.sets.first(where: { $0.id == setID }) {
             row.completedAt = Date()
         }
+    }
+
+    private func addSet(to exercise: WorkoutSessionContext.Exercise) {
+        let count = setsFor(exercise).count
+        let previous = setsFor(exercise).last
+        let row = SDStrengthSet(
+            exerciseName: exercise.name,
+            setIndex: count,
+            weightLb: previous?.weightLb ?? 0,
+            reps: previous?.reps ?? 0
+        )
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+            session.sets.append(row)
+        }
+    }
+
+    private var addExerciseSheet: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Add exercise")
+                .font(.system(size: 22, weight: .heavy, design: .rounded))
+                .foregroundStyle(.biteInk)
+            TextField("Exercise name", text: $newExerciseName)
+                .font(.system(size: 17, weight: .semibold))
+                .padding(14)
+                .background(Color.black.opacity(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            Button {
+                let name = newExerciseName.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !name.isEmpty else { return }
+                let exercise = WorkoutSessionContext.Exercise(
+                    id: UUID(),
+                    name: name,
+                    muscleGroup: nil,
+                    sets: 1,
+                    reps: nil,
+                    restSec: 90
+                )
+                extraExercises.append(exercise)
+                session.sets.append(SDStrengthSet(exerciseName: name, setIndex: 0))
+                newExerciseName = ""
+                showingAddExercise = false
+            } label: {
+                Text("Add")
+                    .font(.system(size: 15, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .background(newExerciseName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.biteInkFaint : Color.biteInk, in: Capsule())
+            }
+            .disabled(newExerciseName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            Spacer()
+        }
+        .padding(20)
+        .background(Color.white)
     }
 
     private func finish() {
@@ -176,11 +289,12 @@ private struct ExerciseSection: View {
     let sets: [SDStrengthSet]
     let onTapWeight: (UUID) -> Void
     let onComplete: (UUID) -> Void
+    let onAddSet: () -> Void
 
     @State private var activeRestEndAt: [UUID: Date] = [:]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 Text(exercise.name)
                     .font(.system(size: 16, weight: .heavy))
@@ -199,7 +313,20 @@ private struct ExerciseSection: View {
                 }
             }
 
-            VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                Text("SET")
+                    .frame(width: 26)
+                Text("WEIGHT")
+                    .frame(maxWidth: .infinity)
+                Text("REPS")
+                    .frame(maxWidth: .infinity)
+                Text("")
+                    .frame(width: 30)
+            }
+            .font(.system(size: 9.5, weight: .heavy))
+            .foregroundStyle(.biteInkFaint)
+
+            VStack(spacing: 6) {
                 ForEach(Array(sets.enumerated()), id: \.element.id) { idx, set in
                     SetRow(
                         index: idx,
@@ -218,10 +345,20 @@ private struct ExerciseSection: View {
                     }
                 }
             }
+
+            Button(action: onAddSet) {
+                Label("Add set", systemImage: "plus")
+                    .font(.system(size: 12, weight: .heavy))
+                    .foregroundStyle(.biteInkMuted)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 32)
+                    .background(Color.black.opacity(0.035), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .buttonStyle(PressableScaleButtonStyle(pressedScale: 0.98))
         }
-        .padding(14)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 2)
+        .padding(12)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.black.opacity(0.05), lineWidth: 1))
     }
 }
 
@@ -236,7 +373,7 @@ private struct SetRow: View {
             Text("\(index + 1)")
                 .font(.system(size: 13, weight: .heavy, design: .rounded))
                 .foregroundStyle(.biteInkMuted)
-                .frame(width: 22)
+                .frame(width: 26)
 
             Button(action: onTapWeight) {
                 HStack(spacing: 2) {
@@ -247,7 +384,7 @@ private struct SetRow: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.biteInkMuted)
                 }
-                .frame(maxWidth: .infinity, minHeight: 36)
+                .frame(maxWidth: .infinity, minHeight: 34)
                 .background {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(Color.black.opacity(0.04))
@@ -260,7 +397,7 @@ private struct SetRow: View {
                     .font(.system(size: 14, weight: .heavy))
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity, minHeight: 36)
+                    .frame(maxWidth: .infinity, minHeight: 34)
                     .background {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .fill(Color.black.opacity(0.04))

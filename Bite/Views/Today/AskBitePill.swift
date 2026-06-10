@@ -9,6 +9,7 @@ import SwiftUI
 struct AskBitePill: View {
     @Bindable var router: BiteRouter
     let morphNS: Namespace.ID
+    @State private var breathing = false
 
     var body: some View {
         Button {
@@ -21,14 +22,49 @@ struct AskBitePill: View {
                     .font(.system(size: 14.5, weight: .medium))
                     .foregroundStyle(.biteInkFaint)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "mic")
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundStyle(.biteInkMuted)
+                    .frame(width: 24, height: 24)
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 13, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .frame(width: 30, height: 30)
+                    .background(Color.biteInk, in: Circle())
             }
             .padding(8)
         }
         .buttonStyle(PressableScaleButtonStyle())
-        .background(Color.white.opacity(0.92), in: Capsule())
-        .overlay(Capsule().stroke(Color.white.opacity(0.8), lineWidth: 1))
-        .shadow(color: .black.opacity(0.08), radius: 24, x: 0, y: 6)
+        .background {
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.96),
+                            Color.biteRedTint.opacity(breathing ? 0.70 : 0.48),
+                            Color.white.opacity(0.86)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        }
+        .overlay {
+            Capsule()
+                .stroke(Color.white.opacity(0.86), lineWidth: 1)
+                .overlay(
+                    Capsule()
+                        .stroke(Color.biteRed.opacity(breathing ? 0.16 : 0.06), lineWidth: 1)
+                )
+        }
+        .shadow(color: Color.biteRed.opacity(breathing ? 0.18 : 0.10), radius: breathing ? 30 : 22, x: 0, y: 8)
+        .shadow(color: .black.opacity(0.06), radius: 18, x: 0, y: 5)
         .glassEffect(in: .capsule)
         .matchedGeometryEffect(id: "composer", in: morphNS)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 2.8).repeatForever(autoreverses: true)) {
+                breathing = true
+            }
+        }
     }
 }
