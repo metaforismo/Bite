@@ -15,6 +15,7 @@ struct FitnessView: View {
                 BiteTopBar(onBack: nil) { EmptyView() }
                 Group {
                     header
+                    readinessPanel
                     if !sessions.isEmpty {
                         densityStrip
                     }
@@ -129,6 +130,71 @@ struct FitnessView: View {
         }
     }
 
+    private var readinessPanel: some View {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let weekStart = cal.date(byAdding: .day, value: -6, to: today) ?? today
+        let recent = sessions.filter { $0.startedAt >= weekStart }
+        let completedSets = recent.reduce(0) { partial, session in
+            partial + session.sets.filter { $0.completedAt != nil }.count
+        }
+        let totalVolume = recent.reduce(0.0) { acc, session in
+            acc + session.sets.reduce(0.0) { $0 + ($1.weightLb * Double($1.reps)) }
+        }
+        let readiness = sessions.isEmpty ? nil : min(96, 58 + completedSets * 3)
+        let recommendation = sessions.isEmpty ? "Build a baseline" : (completedSets >= 18 ? "Bias recovery today" : "Strength window open")
+
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("TRAINING READINESS")
+                        .font(.system(size: 10, weight: .heavy))
+                        .tracking(0.6)
+                        .foregroundStyle(.biteInkFaint)
+                    Text(recommendation)
+                        .font(.system(size: 17, weight: .heavy))
+                        .foregroundStyle(.biteInk)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 0) {
+                    Text(readiness.map { "\($0)" } ?? "--")
+                        .font(.system(size: 32, weight: .heavy, design: .rounded))
+                        .foregroundStyle(readiness == nil ? .biteInkFaint : .biteRingRecovery)
+                        .monospacedDigit()
+                    Text("score")
+                        .font(.system(size: 10, weight: .heavy))
+                        .foregroundStyle(.biteInkFaint)
+                }
+            }
+
+            HStack(spacing: 10) {
+                FitnessSignalTile(title: "Load", value: "\(completedSets)", unit: "sets", tint: .biteRed)
+                FitnessSignalTile(title: "Volume", value: "\(Int(totalVolume))", unit: "lb", tint: .biteInk)
+                FitnessSignalTile(title: "Target", value: sessions.isEmpty ? "Base" : (completedSets >= 18 ? "Low" : "Mod"), unit: "strain", tint: .biteCarbs)
+            }
+
+            Button {
+                router.openChat(prefill: "Build today's workout from my recovery, sleep, recent training load, soreness, and goal.")
+            } label: {
+                HStack {
+                    Image(systemName: "wand.and.stars")
+                    Text("Generate recovery-aware workout")
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                }
+                .font(.system(size: 13, weight: .heavy))
+                .foregroundStyle(.biteInk)
+                .padding(12)
+                .background(Color.black.opacity(0.045), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(PressableScaleButtonStyle(pressedScale: 0.98))
+        }
+        .padding(16)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: BiteTheme.cardCornerRadius, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: BiteTheme.cardCornerRadius, style: .continuous).stroke(Color.black.opacity(0.04), lineWidth: 1))
+        .biteShadow(.raised)
+    }
+
     private var emptyState: some View {
         VStack(spacing: 12) {
             Image(systemName: "figure.run")
@@ -136,24 +202,39 @@ struct FitnessView: View {
                 .foregroundStyle(.biteRedSoft)
                 .padding(20)
                 .background(.biteRedTint, in: Circle())
-            Text("Ask Bite to propose a workout")
+            Text("Start a strength session")
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(.biteInk)
-            Text("Tell Bite your goal — recovery, strength, endurance — and it'll build a workout that respects your fatigue and constraints.")
+            Text("Track sets, reps, rest, and volume now. Bite can still build a tailored plan from your recovery, goals, and constraints.")
                 .font(.system(size: 13.5, weight: .medium))
                 .foregroundStyle(.biteInkMuted)
                 .multilineTextAlignment(.center)
-            Button {
-                router.openChat(prefill: "Build me a workout for today")
-            } label: {
-                Text("Open Coach")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 12)
-                    .background(.biteRed, in: Capsule())
+
+            HStack(spacing: 10) {
+                Button {
+                    router.startWorkoutSession(defaultWorkoutContext)
+                } label: {
+                    Label("Start workout", systemImage: "play.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
+                        .background(.biteRed, in: Capsule())
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    router.openChat(prefill: "Build me a workout for today")
+                } label: {
+                    Text("Ask Bite")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.biteInk)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
+                        .background(Color.black.opacity(0.05), in: Capsule())
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
             .padding(.top, 6)
         }
         .padding(28)
@@ -164,6 +245,19 @@ struct FitnessView: View {
                 .stroke(Color.black.opacity(0.04), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 2)
+    }
+
+    private var defaultWorkoutContext: WorkoutSessionContext {
+        WorkoutSessionContext(
+            id: UUID(),
+            artifactID: nil,
+            title: "Strength Session",
+            exercises: [
+                .init(id: UUID(), name: "Back Squat", muscleGroup: "Lower", sets: 3, reps: "8-10", restSec: 120),
+                .init(id: UUID(), name: "Bench Press", muscleGroup: "Push", sets: 3, reps: "8-10", restSec: 120),
+                .init(id: UUID(), name: "Bent Over Row", muscleGroup: "Pull", sets: 3, reps: "10", restSec: 90)
+            ]
+        )
     }
 
     private var workoutList: some View {
@@ -204,5 +298,34 @@ struct FitnessView: View {
                 )
             }
         }
+    }
+}
+
+private struct FitnessSignalTile: View {
+    let title: String
+    let value: String
+    let unit: String
+    let tint: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title.uppercased())
+                .font(.system(size: 9.5, weight: .heavy))
+                .foregroundStyle(.biteInkFaint)
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(value)
+                    .font(.system(size: 19, weight: .heavy, design: .rounded))
+                    .foregroundStyle(tint)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                Text(unit)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.biteInkMuted)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(11)
+        .background(Color.black.opacity(0.035), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
     }
 }

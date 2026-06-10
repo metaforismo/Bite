@@ -50,6 +50,8 @@ final class BiteRouter {
     var logSheetOpen: Bool = false
     var healthRecordsSheetOpen: Bool = false
     var prefilledChatPrompt: String?
+    var requestedCoachThread: CoachThread?
+    var newChatRequestID = UUID()
     /// When set, CoachView immediately sends this message in a new turn
     /// instead of waiting for the user to tap Send. Used by file uploads
     /// to kick off analysis automatically. Cleared after consumption.
@@ -91,6 +93,7 @@ final class BiteRouter {
     }
 
     func openChat(prefill: String? = nil, thenPlus: Bool = false) {
+        requestedCoachThread = nil
         prefilledChatPrompt = prefill
         withAnimation(BiteMotion.chatMorph) { route = .chat }
         if thenPlus {
@@ -99,6 +102,21 @@ final class BiteRouter {
                 withAnimation(BiteMotion.plusSheet) { plusSheetOpen = true }
             }
         }
+    }
+
+    func openChatThread(_ thread: CoachThread) {
+        requestedCoachThread = thread
+        prefilledChatPrompt = nil
+        drawerOpen = false
+        withAnimation(BiteMotion.chatMorph) { route = .chat }
+    }
+
+    func startNewChat() {
+        requestedCoachThread = nil
+        prefilledChatPrompt = nil
+        newChatRequestID = UUID()
+        drawerOpen = false
+        withAnimation(BiteMotion.chatMorph) { route = .chat }
     }
 
     func openFiles() {

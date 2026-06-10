@@ -36,6 +36,8 @@ struct BiteShell: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(BiteGradientBackground(style: .coach))
                     .opacity(router.route == .chat ? 1 : 0)
+                    .scaleEffect(router.route == .chat ? 1 : 0.985, anchor: .bottom)
+                    .offset(y: router.route == .chat ? 0 : 18)
                     .allowsHitTesting(router.route == .chat)
                     .animation(BiteMotion.chatMorph, value: router.route)
                     .zIndex(2)

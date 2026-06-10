@@ -15,33 +15,18 @@ struct OnboardingProgressBar: View {
 
     var body: some View {
         if currentPage > 0 {
-            GeometryReader { geo in
-                let fillWidth = max(0, geo.size.width * progress)
-                ZStack(alignment: .leading) {
+            let segments = max(totalPages - 1, 1)
+            HStack(spacing: 3) {
+                ForEach(0..<segments, id: \.self) { index in
                     Capsule()
-                        .fill(Color.black.opacity(0.07))
-                        .frame(height: 4)
-
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.biteRed, Color.biteRedSoft],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: fillWidth, height: 4)
-                        .overlay(alignment: .trailing) {
-                            Circle()
-                                .fill(Color.white)
-                                .frame(width: 8, height: 8)
-                                .shadow(color: Color.biteRed.opacity(0.4), radius: 4, x: 0, y: 0)
-                                .opacity(progress > 0 ? 1 : 0)
-                        }
-                        .animation(BiteMotion.progressBar, value: progress)
+                        .fill(index < currentPage ? Color.biteRed : Color.black.opacity(0.08))
+                        .frame(height: 5)
+                        .animation(BiteMotion.progressBar.delay(Double(index) * 0.006), value: currentPage)
                 }
             }
-            .frame(height: 8)
+            .frame(height: 10)
+            .accessibilityLabel("Onboarding progress")
+            .accessibilityValue("\(Int(progress * 100)) percent")
         }
     }
 }

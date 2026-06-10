@@ -14,6 +14,8 @@ struct TodayView: View {
     @State private var hrv: Double? = nil
     @State private var rhr: Double? = nil
     @State private var sleepHours: Double? = nil
+    @State private var steps: Int? = nil
+    @State private var activeEnergyKcal: Double? = nil
     @State private var dailyInsight: String? = nil
     @State private var showingSleepDetail = false
     @State private var showingSettings = false
@@ -66,6 +68,9 @@ struct TodayView: View {
         guard let sleepHours else { return 0 }
         return min(1, sleepHours / 8.0)
     }
+    private var activityPct: Double {
+        min(1, Double(steps ?? 0) / 10_000.0)
+    }
 
     var body: some View {
         ScrollView {
@@ -73,15 +78,10 @@ struct TodayView: View {
                 header
                 date
                 statusPills
-                ringsSection
-                insightSection
-                cycleSection
-                healthMonitorSection
-                mealsSection
-                macroDonutSection
-                hydrationStreakSection
-                dailyReviewSection
-                documentUploadSection
+                dashboardSection
+                coachBriefSection
+                quickLogSection
+                compactTimelineSection
                 upNextSection
             }
             .padding(.top, BiteTheme.deviceSafeAreaTop)
@@ -276,6 +276,169 @@ struct TodayView: View {
             }
         }
         .padding(.horizontal, 20)
+    }
+
+    private var dashboardSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("TODAY DASHBOARD")
+                    .font(.system(size: 12, weight: .bold))
+                    .tracking(0.6)
+                    .foregroundStyle(.biteInkMuted)
+                Spacer()
+                Text("Apple Health")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.biteInkFaint)
+            }
+
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                DashboardMetricCard(
+                    title: "Recovery",
+                    value: "\(Int(recoveryPct * 100))",
+                    unit: "%",
+                    subtitle: hrv.map { "HRV \(Int($0)) ms" } ?? "No HRV yet",
+                    status: recoveryPct >= 0.75 ? "Ready" : "Recover",
+                    color: .biteRingRecovery,
+                    progress: recoveryPct,
+                    trend: [40, hrv ?? 0, 55, 48, hrv ?? 0]
+                ) {
+                    router.openChat(prefill: "Explain my recovery today using HRV, resting heart rate, sleep, and activity.")
+                }
+
+                DashboardMetricCard(
+                    title: "Sleep",
+                    value: sleepHours.map { String(format: "%.1f", $0) } ?? "—",
+                    unit: "h",
+                    subtitle: sleepPct >= 0.85 ? "Goal hit" : "Below target",
+                    status: sleepPct >= 0.85 ? "Good" : "Catch up",
+                    color: .biteRingSleep,
+                    progress: sleepPct,
+                    trend: [6.5, 7.2, sleepHours ?? 0]
+                ) {
+                    showingSleepDetail = true
+                }
+
+                DashboardMetricCard(
+                    title: "Nutrition",
+                    value: "\(consumedKcal)",
+                    unit: "kcal",
+                    subtitle: "\(Int(consumedProtein))g protein",
+                    status: nutritionPct >= 0.95 ? "Done" : "On track",
+                    color: .biteRed,
+                    progress: nutritionPct,
+                    trend: kcalLast7Days
+                ) {
+                    router.openChat(prefill: "Review my nutrition today against my calories and macros.")
+                }
+
+                DashboardMetricCard(
+                    title: "Activity",
+                    value: "\(steps ?? 0)",
+                    unit: "steps",
+                    subtitle: activeEnergyKcal.map { "\(Int($0)) active kcal" } ?? "No activity yet",
+                    status: activityPct >= 0.8 ? "Moving" : "Build up",
+                    color: .biteCarbs,
+                    progress: activityPct,
+                    trend: [0, Double(steps ?? 0) * 0.35, Double(steps ?? 0) * 0.72, Double(steps ?? 0)]
+                ) {
+                    router.openChat(prefill: "What activity should I do today based on my recovery and goal?")
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+
+    private var coachBriefSection: some View {
+        let copy = StatusInsightCopy.copy(for: currentStatusKind, daysActive: statusDays)
+        let message = dailyInsight ?? copy.message
+        return Button {
+            BiteHaptics.impact(.light)
+            router.openChat(prefill: "Give me a concise plan for today using recovery, sleep, nutrition, and activity.")
+        } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Label("Coach brief", systemImage: "sparkles")
+                        .font(.system(size: 12, weight: .heavy))
+                        .foregroundStyle(.biteInkMuted)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.biteInkFaint)
+                }
+                Text(message)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.biteInk)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.black.opacity(0.05), lineWidth: 1))
+        }
+        .buttonStyle(PressableScaleButtonStyle(pressedScale: 0.98))
+        .padding(.horizontal, 20)
+    }
+
+    private var quickLogSection: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                quickLogButton("Food", icon: "fork.knife", color: .biteRed) {
+                    router.openChat(prefill: "Log my last meal — what should I tell you?")
+                }
+                quickLogButton("Water", icon: "drop.fill", color: .biteHydration) {
+                    router.openModal(.hydration)
+                }
+                quickLogButton("Caffeine", icon: "cup.and.saucer.fill", color: .biteCarbs) {
+                    router.openModal(.caffeine)
+                }
+                quickLogButton("Status", icon: currentStatusKind.icon, color: statusIconColor) {
+                    router.openModal(.activityStatus)
+                }
+                quickLogButton("Files", icon: "doc.badge.plus", color: .biteFat) {
+                    router.openChat(thenPlus: true)
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+
+    private func quickLogButton(_ title: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button {
+            BiteHaptics.selection()
+            action()
+        } label: {
+            HStack(spacing: 7) {
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(color)
+                Text(title)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(.biteInk)
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 36)
+            .background(Color.white, in: Capsule())
+            .overlay(Capsule().stroke(Color.black.opacity(0.05), lineWidth: 1))
+        }
+        .buttonStyle(PressableScaleButtonStyle(pressedScale: 0.96))
+    }
+
+    @ViewBuilder
+    private var compactTimelineSection: some View {
+        if !todayEntries.isEmpty || userProfile.cycleTrackingEnabled {
+            VStack(spacing: 10) {
+                MealsTimelineCard(entries: todayEntries, consumedKcal: consumedKcal, goalKcal: userProfile.calorieGoal)
+                    .askCoachContext("How's my nutrition looking today vs. my goals?")
+                if userProfile.cycleTrackingEnabled {
+                    CycleCard(
+                        onLogTap: { router.openModal(.menstrualLog) },
+                        onAskBite: { router.openChat(prefill: "Give me a cycle insight for today.") }
+                    )
+                }
+            }
+            .padding(.horizontal, 20)
+        }
     }
 
     /// Macro split donut beneath the meals section — concentric protein/carbs/fat
@@ -487,11 +650,15 @@ struct TodayView: View {
         async let hrvTask = healthKit.fetchAverageHRV()
         async let rhrTask = healthKit.fetchRestingHeartRate()
         async let sleepTask = healthKit.fetchLastNightSleepHours()
-        let (h, r, s) = await (hrvTask, rhrTask, sleepTask)
+        async let stepsTask = healthKit.fetchTodaySteps()
+        async let activeTask = healthKit.fetchTodayActiveEnergy()
+        let (h, r, s, st, active) = await (hrvTask, rhrTask, sleepTask, stepsTask, activeTask)
         await MainActor.run {
             self.hrv = h
             self.rhr = r
             self.sleepHours = s
+            self.steps = st
+            self.activeEnergyKcal = active
         }
     }
 
@@ -524,5 +691,71 @@ struct TodayView: View {
             guard let d = cal.date(byAdding: .day, value: offset, to: monday) else { return false }
             return dayBuckets.contains(d)
         }
+    }
+}
+
+private struct DashboardMetricCard: View {
+    let title: String
+    let value: String
+    let unit: String
+    let subtitle: String
+    let status: String
+    let color: Color
+    let progress: Double
+    let trend: [Double]
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text(title.uppercased())
+                        .font(.system(size: 10, weight: .heavy))
+                        .tracking(0.5)
+                        .foregroundStyle(.biteInkFaint)
+                    Spacer()
+                    Text(status)
+                        .font(.system(size: 10.5, weight: .heavy))
+                        .foregroundStyle(color)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 4)
+                        .background(color.opacity(0.12), in: Capsule())
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(value)
+                        .font(.system(size: 27, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.biteInk)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                    Text(unit)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.biteInkMuted)
+                }
+
+                Text(subtitle)
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(.biteInkMuted)
+                    .lineLimit(1)
+
+                HStack(spacing: 10) {
+                    ProgressView(value: min(1, max(0, progress)))
+                        .tint(color)
+                    if trend.contains(where: { $0 > 0 }) {
+                        BiteSparkline(values: trend, goal: nil, color: color, fillArea: false, height: 22)
+                            .frame(width: 54, height: 22)
+                    }
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 154, alignment: .topLeading)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(Color.black.opacity(0.05), lineWidth: 1)
+            }
+        }
+        .buttonStyle(PressableScaleButtonStyle(pressedScale: 0.98))
     }
 }

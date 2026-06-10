@@ -14,6 +14,9 @@ final class CoachChatViewModel {
     var streamingText: String = ""
     var isStreaming: Bool = false
     var lastError: String?
+    var researchCitations: [ResearchCitation] = []
+    var activeToolName: String?
+    var recentToolActivities: [ToolActivity] = []
     /// Set by the tool_result handler so the chat scroll can render an
     /// inline "View in [tab]" chip without an artifact card. Cleared
     /// after the host view forwards it to BiteRouter.
@@ -25,6 +28,24 @@ final class CoachChatViewModel {
         var done: Bool
     }
 
+    struct ResearchCitation: Identifiable, Hashable {
+        let id = UUID()
+        var title: String
+        var url: URL
+        var source: String
+        var journal: String?
+        var publishedAt: String?
+    }
+
+    struct ToolActivity: Identifiable, Hashable {
+        enum Status: String, Hashable { case running, done, failed }
+        let id = UUID()
+        var name: String
+        var label: String
+        var status: Status
+        var timestamp: Date = Date()
+    }
+
     private let modelContext: ModelContext
     private let remote: RemoteAIService
     private let auth: AuthTokenProviding
@@ -34,6 +55,36 @@ final class CoachChatViewModel {
         self.modelContext = modelContext
         self.remote = remote
         self.auth = auth
+    }
+
+    func openThread(_ thread: CoachThread) {
+        streamTask?.cancel()
+        streamTask = nil
+        self.thread = thread
+        thinkingSteps.removeAll()
+        streamingText = ""
+        researchCitations.removeAll()
+        activeToolName = nil
+        recentToolActivities.removeAll()
+        lastInlineReceipt = nil
+        lastError = nil
+        isStreaming = false
+        mode = thread.messages.isEmpty ? .idle : .response
+    }
+
+    func resetForNewThread() {
+        streamTask?.cancel()
+        streamTask = nil
+        thread = nil
+        thinkingSteps.removeAll()
+        streamingText = ""
+        researchCitations.removeAll()
+        activeToolName = nil
+        recentToolActivities.removeAll()
+        lastInlineReceipt = nil
+        lastError = nil
+        isStreaming = false
+        mode = .idle
     }
 
     func startNewThreadIfNeeded() async {
@@ -58,12 +109,15 @@ final class CoachChatViewModel {
     }
 
     /// Submits a user message + optional photo (already uploaded with a fileId).
-    func send(_ text: String, attachments: [ChatAttachmentRef] = []) {
+    func send(_ text: String, attachments: [ChatAttachmentRef] = [], contextHint: String? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         streamTask?.cancel()
         streamingText = ""
         thinkingSteps.removeAll()
+        researchCitations.removeAll()
+        activeToolName = nil
+        recentToolActivities.removeAll()
         mode = .thinking
         isStreaming = true
 
@@ -79,7 +133,13 @@ final class CoachChatViewModel {
             try? modelContext.save()
 
             let snapshot = await HealthKitService.shared.snapshot()
-            let stream = remote.sendMessage(threadId: thread.id, text: trimmed, attachments: attachments, snapshot: snapshot)
+            let outboundText: String
+            if let hint = contextHint, !hint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                outboundText = "\(hint)\n\nUser message: \(trimmed)"
+            } else {
+                outboundText = trimmed
+            }
+            let stream = remote.sendMessage(threadId: thread.id, text: outboundText, attachments: attachments, snapshot: snapshot)
 
             do {
                 var assistantText = ""
@@ -99,12 +159,13 @@ final class CoachChatViewModel {
                         assistantText += chunk
                         streamingText = assistantText
                         if mode != .response { mode = .response }
-                    case .toolCall:
-                        // Worker is invoking a tool. Telemetry only — the
-                        // resulting state is reflected via `.artifact` (food)
-                        // or `.toolResult` (drink/activity/weight) below.
-                        break
+                    case .toolCall(let name, _):
+                        startToolActivity(name)
                     case .toolResult(let name, let resultJSON):
+                        finishToolActivity(name, status: .done)
+                        if name == "research_science" {
+                            researchCitations = Self.decodeResearchCitations(resultJSON)
+                        }
                         // Mirror non-food tool outcomes (food goes via the
                         // food_cart artifact path so confirmation can gate
                         // the local write). The dispatcher returns a
@@ -133,9 +194,11 @@ final class CoachChatViewModel {
                         }
                         try? modelContext.save()
                     case .error(let message):
+                        failActiveTool()
                         lastError = message
                         mode = .error
                     case .done:
+                        activeToolName = nil
                         if !assistantText.isEmpty, assistantMessage == nil {
                             let msg = CoachMessage(role: .assistant, text: assistantText, thread: thread)
                             modelContext.insert(msg)
@@ -148,11 +211,13 @@ final class CoachChatViewModel {
             } catch is CancellationError {
                 // Swallow.
             } catch {
+                failActiveTool()
                 lastError = error.localizedDescription
                 mode = .error
             }
 
             isStreaming = false
+            activeToolName = nil
             if mode != .error { mode = .idle }
         }
     }
@@ -161,6 +226,85 @@ final class CoachChatViewModel {
         streamTask?.cancel()
         streamTask = nil
         isStreaming = false
+        activeToolName = nil
         mode = .idle
+    }
+
+    private func startToolActivity(_ name: String) {
+        activeToolName = name
+        if let idx = recentToolActivities.firstIndex(where: { $0.name == name && $0.status == .running }) {
+            recentToolActivities[idx].timestamp = Date()
+        } else {
+            recentToolActivities.insert(
+                ToolActivity(name: name, label: Self.friendlyToolLabel(name), status: .running),
+                at: 0
+            )
+        }
+        recentToolActivities = Array(recentToolActivities.prefix(4))
+    }
+
+    private func finishToolActivity(_ name: String, status: ToolActivity.Status) {
+        if let idx = recentToolActivities.firstIndex(where: { $0.name == name }) {
+            recentToolActivities[idx].status = status
+            recentToolActivities[idx].timestamp = Date()
+        } else {
+            recentToolActivities.insert(
+                ToolActivity(name: name, label: Self.friendlyToolLabel(name), status: status),
+                at: 0
+            )
+        }
+        if activeToolName == name {
+            activeToolName = nil
+        }
+        recentToolActivities = Array(recentToolActivities.prefix(4))
+    }
+
+    private func failActiveTool() {
+        guard let activeToolName else { return }
+        finishToolActivity(activeToolName, status: .failed)
+    }
+
+    private static func decodeResearchCitations(_ json: String) -> [ResearchCitation] {
+        guard let data = json.data(using: .utf8) else { return [] }
+        struct Payload: Decodable {
+            struct Source: Decodable {
+                let title: String
+                let url: URL
+                let source: String
+                let journal: String?
+                let publishedAt: String?
+            }
+            let sources: [Source]
+        }
+        guard let payload = try? JSONDecoder().decode(Payload.self, from: data) else { return [] }
+        return payload.sources.map {
+            ResearchCitation(
+                title: $0.title,
+                url: $0.url,
+                source: $0.source,
+                journal: $0.journal,
+                publishedAt: $0.publishedAt
+            )
+        }
+    }
+
+    private static func friendlyToolLabel(_ name: String) -> String {
+        switch name {
+        case "research_science": return "Researching papers"
+        case "search_memories": return "Checking memory"
+        case "log_food": return "Logging food"
+        case "log_water", "log_hydration": return "Logging hydration"
+        case "log_caffeine": return "Logging caffeine"
+        case "log_activity_status": return "Updating status"
+        case "attach_lab_report": return "Reading lab file"
+        case "generate_plan": return "Building plan"
+        case "log_workout": return "Saving workout"
+        case "add_weight_entry": return "Saving weight"
+        default:
+            return name
+                .split(separator: "_")
+                .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+                .joined(separator: " ")
+        }
     }
 }

@@ -14,21 +14,25 @@ struct BiologicalAgeCard: View {
     private var latest: BiologicalAgeSnapshot? { snapshots.first }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
             header
             if let latest {
-                bigNumeral(latest)
+                HStack(alignment: .center, spacing: 18) {
+                    bigNumeral(latest)
+                    Spacer()
+                    ConfidenceRing(confidence: latest.confidence)
+                        .frame(width: 82, height: 82)
+                }
                 deltaLine(latest)
-                confidenceLine(latest)
             } else {
                 emptyState
             }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: BiteTheme.cardCornerRadius, style: .continuous))
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: BiteTheme.cardCornerRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(Color.black.opacity(0.04), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.04), radius: 12, x: 0, y: 2)
@@ -56,13 +60,19 @@ struct BiologicalAgeCard: View {
     }
 
     private func bigNumeral(_ s: BiologicalAgeSnapshot) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Biological age")
+                .font(.system(size: 12, weight: .heavy))
+                .foregroundStyle(.biteInkFaint)
+                .textCase(.uppercase)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(String(format: "%.1f", s.biologicalAge))
                 .font(.system(size: 48, weight: .heavy, design: .rounded))
                 .foregroundStyle(.biteInk)
             Text("years")
                 .font(.system(size: 14, weight: .heavy))
                 .foregroundStyle(.biteInkMuted)
+            }
         }
     }
 
@@ -85,20 +95,6 @@ struct BiologicalAgeCard: View {
         .foregroundStyle(color)
     }
 
-    private func confidenceLine(_ s: BiologicalAgeSnapshot) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "gauge.with.dots.needle.bottom.50percent")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Color.biteCarbs)
-            Text("\(Int(s.confidence * 100))% confidence")
-                .font(.system(size: 12, weight: .heavy))
-                .foregroundStyle(.biteInk)
-            Text(confidenceLabel(s.confidence))
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.biteInkMuted)
-        }
-    }
-
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Estimate not ready")
@@ -114,5 +110,28 @@ struct BiologicalAgeCard: View {
         if c >= 0.8 { return "High-quality estimate with minor gaps" }
         if c >= 0.5 { return "Good estimate, more lab data improves accuracy" }
         return "Low-confidence estimate"
+    }
+}
+
+private struct ConfidenceRing: View {
+    let confidence: Double
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.black.opacity(0.06), lineWidth: 8)
+            Circle()
+                .trim(from: 0, to: min(1, max(0, confidence)))
+                .stroke(Color.biteRingRecovery, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            VStack(spacing: 0) {
+                Text("\(Int(confidence * 100))%")
+                    .font(.system(size: 18, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.biteInk)
+                Text("conf.")
+                    .font(.system(size: 9.5, weight: .heavy))
+                    .foregroundStyle(.biteInkFaint)
+            }
+        }
     }
 }

@@ -391,6 +391,7 @@ function friendlyToolLabel(name: string): string {
     case "propose_plan": return "Drafting a plan";
     case "add_lab_report": return "Reading the lab document";
     case "get_biomarkers": return "Loading biomarkers";
+    case "research_science": return "Searching scientific sources";
     default: return `Running ${name}`;
   }
 }

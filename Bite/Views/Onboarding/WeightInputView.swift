@@ -5,77 +5,22 @@ struct WeightInputView: View {
     let onContinue: () -> Void
 
     var body: some View {
-        VStack(spacing: 32) {
-            Spacer()
-
-            VStack(spacing: 12) {
-                Image(systemName: "scalemass")
-                    .font(.system(size: 48))
-                    .foregroundStyle(Color.biteBlue)
-
-                Text("How much do you weigh?")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-
-                Text("Used to estimate your basal metabolic rate.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-            }
-
-            VStack(spacing: 16) {
-                HStack(spacing: 16) {
-                    Button {
-                        adjustWeight(by: -0.5)
-                    } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .font(.system(size: 36))
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-
-                    VStack(spacing: 2) {
-                        TextField("70", text: $vm.weightKg)
-                            .font(.system(size: 56, weight: .bold, design: .rounded))
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.center)
-                            .frame(width: 160)
-
-                        Text("kg")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .fontWeight(.medium)
-                    }
-
-                    Button {
-                        adjustWeight(by: 0.5)
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 36))
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(24)
-            .background(.ultraThinMaterial, in: .rect(cornerRadius: 20))
-            .padding(.horizontal, 24)
-
-            Spacer()
-
-            Button {
-                onContinue()
-            } label: {
-                Text("Continue")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.biteRed)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .padding(.horizontal, 24)
-            .padding(.bottom, 48)
+        OnboardingScaffold(
+            iconSystemName: "scalemass",
+            iconColor: .biteBlue,
+            title: "How much do you weigh?",
+            subtitle: "Used to estimate your basal metabolic rate."
+        ) {
+            OnboardingNumberCard(
+                value: $vm.weightKg,
+                placeholder: "70",
+                unit: "kg",
+                allowsDecimal: true,
+                decrement: { adjustWeight(by: -0.5) },
+                increment: { adjustWeight(by: 0.5) }
+            )
+        } primaryAction: {
+            onContinue()
         }
         .scrollDismissesKeyboard(.interactively)
     }
