@@ -10,6 +10,15 @@ struct ChatRequest: Encodable {
 struct ChatAttachmentRef: Encodable, Sendable {
     let fileId: UUID
     let kind: String        // "image" | "pdf" | ...
+
+    enum CodingKeys: String, CodingKey { case fileId, kind }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        // The worker stores UUIDs lowercase; D1 lookups are case-sensitive.
+        try c.encode(fileId.uuidString.lowercased(), forKey: .fileId)
+        try c.encode(kind, forKey: .kind)
+    }
 }
 
 struct ThreadDTO: Decodable, Sendable {
@@ -17,10 +26,18 @@ struct ThreadDTO: Decodable, Sendable {
     let title: String
     let createdAt: Date
     let lastMessageAt: Date
-    enum CodingKeys: String, CodingKey {
-        case id, title
-        case createdAt = "created_at"
-        case lastMessageAt = "last_message_at"
+
+    enum CodingKeys: String, CodingKey { case id, title, createdAt, lastMessageAt }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        title = try c.decode(String.self, forKey: .title)
+        // The worker sends epoch milliseconds.
+        let createdMs = try c.decode(Double.self, forKey: .createdAt)
+        createdAt = Date(timeIntervalSince1970: createdMs / 1000)
+        let lastMs = try c.decodeIfPresent(Double.self, forKey: .lastMessageAt)
+        lastMessageAt = lastMs.map { Date(timeIntervalSince1970: $0 / 1000) } ?? createdAt
     }
 }
 
@@ -40,7 +57,9 @@ final class RemoteAIService {
     }
 
     func listThreads() async throws -> [ThreadDTO] {
-        try await api.get("/v1/chat/threads")
+        struct Envelope: Decodable { let threads: [ThreadDTO] }
+        let envelope: Envelope = try await api.get("/v1/chat/threads")
+        return envelope.threads
     }
 
     /// Sends a user message in `threadId`, streaming back typed events.
@@ -52,7 +71,7 @@ final class RemoteAIService {
         snapshot: HealthSnapshot
     ) -> AsyncThrowingStream<CoachStreamEvent, Error> {
         let request = ChatRequest(text: text, healthSnapshot: snapshot, attachments: attachments)
-        let path = "/v1/chat/threads/\(threadId.uuidString)/messages"
+        let path = "/v1/chat/threads/\(threadId.uuidString.lowercased())/messages"
         let raw = api.sseStream(path: path, body: request)
 
         return AsyncThrowingStream { continuation in

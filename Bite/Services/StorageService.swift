@@ -78,6 +78,7 @@ final class StorageService {
             if Calendar.current.isDateInToday(log.date) {
                 refreshWidgetSnapshot(with: log)
             }
+            NotificationService.shared.scheduleReminderIfNeeded()
         } catch {
             assertionFailure("saveDayLog failed: \(error)")
         }

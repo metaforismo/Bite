@@ -9,6 +9,12 @@ struct FitnessView: View {
     @Query(sort: [SortDescriptor(\SDStrengthSession.startedAt, order: .reverse)])
     private var sessions: [SDStrengthSession]
 
+    /// Sessions that actually logged work — at least one completed set.
+    /// Readiness and weekly counts ignore empty shells.
+    private var loggedSessions: [SDStrengthSession] {
+        sessions.filter { session in session.sets.contains { $0.completedAt != nil } }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
@@ -16,7 +22,7 @@ struct FitnessView: View {
                 Group {
                     header
                     readinessPanel
-                    if !sessions.isEmpty {
+                    if !loggedSessions.isEmpty {
                         densityStrip
                     }
                     if workouts.isEmpty {
@@ -27,12 +33,11 @@ struct FitnessView: View {
                 }
                 .padding(.horizontal, 20)
             }
-            .padding(.top, BiteTheme.deviceSafeAreaTop)
-            .padding(.bottom, BiteTheme.bottomFloatingClearance + 56)
         }
         .scrollIndicators(.hidden)
+        .scrollEdgeEffectStyle(.soft, for: .top)
+        .contentMargins(.bottom, 12, for: .scrollContent)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .ignoresSafeArea(.container, edges: .top)
     }
 
     /// Last-7-day weekly volume bar + session count callout. Sits above
@@ -41,7 +46,7 @@ struct FitnessView: View {
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
         let weekStart = cal.date(byAdding: .day, value: -6, to: today) ?? today
-        let recent = sessions.filter { $0.startedAt >= weekStart }
+        let recent = loggedSessions.filter { $0.startedAt >= weekStart }
         let dailyVolume: [Double] = (0..<7).map { offset -> Double in
             guard let day = cal.date(byAdding: .day, value: offset, to: weekStart) else { return 0 }
             let dayStart = cal.startOfDay(for: day)
@@ -134,15 +139,15 @@ struct FitnessView: View {
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
         let weekStart = cal.date(byAdding: .day, value: -6, to: today) ?? today
-        let recent = sessions.filter { $0.startedAt >= weekStart }
+        let recent = loggedSessions.filter { $0.startedAt >= weekStart }
         let completedSets = recent.reduce(0) { partial, session in
             partial + session.sets.filter { $0.completedAt != nil }.count
         }
         let totalVolume = recent.reduce(0.0) { acc, session in
             acc + session.sets.reduce(0.0) { $0 + ($1.weightLb * Double($1.reps)) }
         }
-        let readiness = sessions.isEmpty ? nil : min(96, 58 + completedSets * 3)
-        let recommendation = sessions.isEmpty ? "Build a baseline" : (completedSets >= 18 ? "Bias recovery today" : "Strength window open")
+        let readiness = loggedSessions.isEmpty ? nil : min(96, 58 + completedSets * 3)
+        let recommendation = loggedSessions.isEmpty ? "Build a baseline" : (completedSets >= 18 ? "Bias recovery today" : "Strength window open")
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center) {
@@ -170,7 +175,7 @@ struct FitnessView: View {
             HStack(spacing: 10) {
                 FitnessSignalTile(title: "Load", value: "\(completedSets)", unit: "sets", tint: .biteRed)
                 FitnessSignalTile(title: "Volume", value: "\(Int(totalVolume))", unit: "lb", tint: .biteInk)
-                FitnessSignalTile(title: "Target", value: sessions.isEmpty ? "Base" : (completedSets >= 18 ? "Low" : "Mod"), unit: "strain", tint: .biteCarbs)
+                FitnessSignalTile(title: "Target", value: loggedSessions.isEmpty ? "Base" : (completedSets >= 18 ? "Low" : "Mod"), unit: "strain", tint: .biteCarbs)
             }
 
             Button {

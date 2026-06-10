@@ -39,6 +39,11 @@ enum CoachStreamEvent: Sendable {
 
 private struct AnyDecodable: Decodable, Encodable {
     let value: Any
+
+    init(value: Any) {
+        self.value = value
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.singleValueContainer()
         if let v = try? c.decode(Bool.self) { value = v }
@@ -50,6 +55,7 @@ private struct AnyDecodable: Decodable, Encodable {
         else if c.decodeNil() { value = NSNull() }
         else { value = NSNull() }
     }
+
     func encode(to encoder: Encoder) throws {
         var c = encoder.singleValueContainer()
         switch value {
@@ -57,6 +63,8 @@ private struct AnyDecodable: Decodable, Encodable {
         case let v as Int: try c.encode(v)
         case let v as Double: try c.encode(v)
         case let v as String: try c.encode(v)
+        case let v as [Any]: try c.encode(v.map { AnyDecodable(value: $0) })
+        case let v as [String: Any]: try c.encode(v.mapValues { AnyDecodable(value: $0) })
         case is NSNull: try c.encodeNil()
         default: try c.encodeNil()
         }

@@ -12,6 +12,12 @@ import type { Env } from "../types";
 
 export type ChatRole = "system" | "user" | "assistant" | "tool";
 
+export interface ToolCallRef {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+}
+
 export interface ChatMessage {
   role: ChatRole;
   content: string;
@@ -19,6 +25,9 @@ export interface ChatMessage {
   name?: string;
   // Optional tool_call_id for tool replies.
   tool_call_id?: string;
+  // Tool calls the assistant emitted — required on assistant turns that
+  // precede `tool` replies, or providers reject the transcript.
+  tool_calls?: ToolCallRef[];
 }
 
 export interface ChatTool {
@@ -45,18 +54,22 @@ export interface ChatOptions {
   temperature?: number;
   /** Optional max output tokens. */
   maxTokens?: number;
+  /** Abort signal propagated from the incoming request. */
+  signal?: AbortSignal;
+}
+
+export interface ToolCallDelta {
+  index: number;
+  id?: string;
+  name?: string;
+  argumentsDelta?: string;
 }
 
 export interface ChatChunk {
   /** Incremental assistant text, if any. */
   delta?: string;
   /** Tool call deltas, if any. */
-  toolCallDelta?: {
-    index: number;
-    id?: string;
-    name?: string;
-    argumentsDelta?: string;
-  };
+  toolCallDeltas?: ToolCallDelta[];
   /** Final stop reason on the last chunk. */
   finishReason?: string | null;
 }
@@ -122,20 +135,28 @@ export class LLMRouter {
     return this.#completeChat(model, opts);
   }
 
+  static #mapMessages(messages: ChatMessage[]): OpenAI.Chat.ChatCompletionMessageParam[] {
+    return messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+      ...(m.name ? { name: m.name } : {}),
+      ...(m.tool_call_id ? { tool_call_id: m.tool_call_id } : {}),
+      ...(m.tool_calls ? { tool_calls: m.tool_calls } : {}),
+    })) as unknown as OpenAI.Chat.ChatCompletionMessageParam[];
+  }
+
   async #completeChat(model: string, opts: ChatOptions): Promise<ChatMessageResult> {
-    const resp = await this.client.chat.completions.create({
-      model,
-      messages: opts.messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-        ...(m.name ? { name: m.name } : {}),
-        ...(m.tool_call_id ? { tool_call_id: m.tool_call_id } : {}),
-      })) as unknown as OpenAI.Chat.ChatCompletionMessageParam[],
-      tools: opts.tools as unknown as OpenAI.Chat.ChatCompletionTool[] | undefined,
-      temperature: opts.temperature,
-      max_tokens: opts.maxTokens,
-      stream: false,
-    });
+    const resp = await this.client.chat.completions.create(
+      {
+        model,
+        messages: LLMRouter.#mapMessages(opts.messages),
+        tools: opts.tools as unknown as OpenAI.Chat.ChatCompletionTool[] | undefined,
+        temperature: opts.temperature,
+        max_tokens: opts.maxTokens,
+        stream: false,
+      },
+      { signal: opts.signal }
+    );
 
     const choice = resp.choices[0];
     const message = choice?.message;
@@ -184,19 +205,17 @@ export class LLMRouter {
     model: string,
     opts: ChatOptions
   ): AsyncGenerator<ChatChunk, void, unknown> {
-    const stream = await this.client.chat.completions.create({
-      model,
-      messages: opts.messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-        ...(m.name ? { name: m.name } : {}),
-        ...(m.tool_call_id ? { tool_call_id: m.tool_call_id } : {}),
-      })) as unknown as OpenAI.Chat.ChatCompletionMessageParam[],
-      tools: opts.tools as unknown as OpenAI.Chat.ChatCompletionTool[] | undefined,
-      temperature: opts.temperature,
-      max_tokens: opts.maxTokens,
-      stream: true,
-    });
+    const stream = await this.client.chat.completions.create(
+      {
+        model,
+        messages: LLMRouter.#mapMessages(opts.messages),
+        tools: opts.tools as unknown as OpenAI.Chat.ChatCompletionTool[] | undefined,
+        temperature: opts.temperature,
+        max_tokens: opts.maxTokens,
+        stream: true,
+      },
+      { signal: opts.signal }
+    );
 
     for await (const part of stream) {
       const choice = part.choices[0];
@@ -209,15 +228,12 @@ export class LLMRouter {
         out.delta = delta.content;
       }
       if (delta?.tool_calls && delta.tool_calls.length > 0) {
-        const tc = delta.tool_calls[0];
-        if (tc) {
-          out.toolCallDelta = {
-            index: tc.index ?? 0,
-            id: tc.id,
-            name: tc.function?.name,
-            argumentsDelta: tc.function?.arguments,
-          };
-        }
+        out.toolCallDeltas = delta.tool_calls.map((tc) => ({
+          index: tc.index ?? 0,
+          id: tc.id,
+          name: tc.function?.name,
+          argumentsDelta: tc.function?.arguments,
+        }));
       }
       yield out;
     }

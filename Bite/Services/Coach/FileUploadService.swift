@@ -46,14 +46,8 @@ final class FileUploadService {
             body: Body(mimeType: kind.mimeType, displayName: displayName, sizeBytes: data.count)
         )
 
-        var put = URLRequest(url: resp.uploadUrl)
-        put.httpMethod = "PUT"
-        put.setValue(kind.mimeType, forHTTPHeaderField: "Content-Type")
-        put.httpBody = data
-        let (_, putResponse) = try await URLSession.shared.data(for: put)
-        guard let http = putResponse as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw BiteAPIError.server(status: (putResponse as? HTTPURLResponse)?.statusCode ?? 0, message: "R2 upload failed")
-        }
+        // The upload proxy sits behind Firebase auth like every /v1 route.
+        try await api.authorizedPUT(url: resp.uploadUrl, data: data, contentType: kind.mimeType)
 
         let row = SDFile(
             id: resp.fileId,
@@ -70,7 +64,7 @@ final class FileUploadService {
     }
 
     func analyze(fileId: UUID) async throws -> FileAnalyzeResponse {
-        try await api.postEmpty("/v1/files/\(fileId.uuidString)/analyze")
+        try await api.postEmpty("/v1/files/\(fileId.uuidString.lowercased())/analyze")
     }
 
     /// Convenience: upload + analyze in one call. Returns the SDFile + analyze response.
