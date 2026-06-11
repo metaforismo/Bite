@@ -38,6 +38,9 @@ struct WorkoutSessionView: View {
                     sets: initialSets
                 )
             }
+            if let session {
+                WorkoutLiveActivityController.shared.start(session: session)
+            }
         }
     }
 }
@@ -81,13 +84,19 @@ private struct WorkoutSessionContent: View {
             finishBar
         }
         .alert("Discard workout?", isPresented: $showingDiscardConfirm) {
-            Button("Discard", role: .destructive) { onFinish() }
+            Button("Discard", role: .destructive) {
+                WorkoutLiveActivityController.shared.end()
+                onFinish()
+            }
             Button("Keep going", role: .cancel) {}
         } message: {
             Text("Sets you've already logged will be lost.")
         }
         .alert("Nothing logged — discard this workout?", isPresented: $showingEmptyFinishConfirm) {
-            Button("Discard", role: .destructive) { onFinish() }
+            Button("Discard", role: .destructive) {
+                WorkoutLiveActivityController.shared.end()
+                onFinish()
+            }
             Button("Cancel", role: .cancel) {}
         }
         .sheet(item: $showingPlateFor) { target in
@@ -167,7 +176,7 @@ private struct WorkoutSessionContent: View {
                         showingPlateFor = PlateBindingTarget(setID: setID)
                     },
                     onComplete: { setID in
-                        completeSet(setID: setID, restSec: exercise.restSec)
+                        completeSet(setID: setID, exercise: exercise)
                     },
                     onAddSet: { addSet(to: exercise) }
                 )
@@ -216,10 +225,17 @@ private struct WorkoutSessionContent: View {
         )
     }
 
-    private func completeSet(setID: UUID, restSec: Int) {
+    private func completeSet(setID: UUID, exercise: WorkoutSessionContext.Exercise) {
         if let row = session.sets.first(where: { $0.id == setID }) {
             row.completedAt = Date()
         }
+        // Mirror progress + the freshly started rest timer to the Live Activity.
+        WorkoutLiveActivityController.shared.update(
+            completedSets: session.sets.filter { $0.completedAt != nil }.count,
+            totalSets: session.sets.count,
+            currentExercise: exercise.name,
+            restEndsAt: Date().addingTimeInterval(TimeInterval(exercise.restSec))
+        )
     }
 
     private func addSet(to exercise: WorkoutSessionContext.Exercise) {
@@ -283,6 +299,7 @@ private struct WorkoutSessionContent: View {
         session.completedAt = Date()
         modelContext.insert(session)
         try? modelContext.save()
+        WorkoutLiveActivityController.shared.end()
         onFinish()
     }
 
