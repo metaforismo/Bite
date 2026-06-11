@@ -24,6 +24,7 @@ final class HealthKitService {
             HKQuantityType(.height),
             HKQuantityType(.heartRateVariabilitySDNN),
             HKQuantityType(.restingHeartRate),
+            HKQuantityType(.respiratoryRate),
             HKQuantityType(.basalBodyTemperature),
             HKQuantityType(.bodyTemperature),
             HKObjectType.workoutType(),
@@ -112,6 +113,61 @@ final class HealthKitService {
             }
             store.execute(query)
         }
+    }
+
+    /// Last night's sleep stage totals in minutes (core, deep, REM).
+    func fetchLastNightSleepStageMinutes() async -> (core: Double, deep: Double, rem: Double)? {
+        guard isAvailable else { return nil }
+        let type = HKCategoryType(.sleepAnalysis)
+        let cal = Calendar.current
+        let end = Date()
+        guard let start = cal.date(byAdding: .hour, value: -24, to: end) else { return nil }
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, _ in
+                guard let categorySamples = samples as? [HKCategorySample] else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                func minutes(_ stage: HKCategoryValueSleepAnalysis) -> Double {
+                    categorySamples
+                        .filter { $0.value == stage.rawValue }
+                        .reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) } / 60
+                }
+                let core = minutes(.asleepCore)
+                let deep = minutes(.asleepDeep)
+                let rem = minutes(.asleepREM)
+                continuation.resume(returning: core + deep + rem > 0 ? (core, deep, rem) : nil)
+            }
+            store.execute(query)
+        }
+    }
+
+    /// Average respiratory rate (breaths/min) over the last night's window.
+    func fetchLastNightRespiratoryRate() async -> Double? {
+        guard isAvailable else { return nil }
+        let type = HKQuantityType(.respiratoryRate)
+        let cal = Calendar.current
+        let end = Date()
+        guard let start = cal.date(byAdding: .hour, value: -24, to: end) else { return nil }
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate, options: .discreteAverage) { _, stats, _ in
+                let value = stats?.averageQuantity()?.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
+                continuation.resume(returning: value)
+            }
+            store.execute(query)
+        }
+    }
+
+    /// Mean of daily HRV (SDNN, ms) averages over the trailing 60 days.
+    func fetchHRVBaseline60d() async -> Double? {
+        await fetchDailyAverageBaseline(for: .heartRateVariabilitySDNN, unit: .secondUnit(with: .milli))
+    }
+
+    /// Mean of daily resting heart rate averages over the trailing 60 days.
+    func fetchRHRBaseline60d() async -> Double? {
+        await fetchDailyAverageBaseline(for: .restingHeartRate, unit: HKUnit.count().unitDivided(by: .minute()))
     }
 
     /// Start and end of last night's sleep, taken from the actual sample interval.
@@ -229,6 +285,40 @@ final class HealthKitService {
             return Int(result)
         } catch {
             return 0
+        }
+    }
+
+    private func fetchDailyAverageBaseline(for identifier: HKQuantityTypeIdentifier, unit: HKUnit, days: Int = 60) async -> Double? {
+        guard isAvailable else { return nil }
+        let type = HKQuantityType(identifier)
+        let cal = Calendar.current
+        let end = Date()
+        guard let start = cal.date(byAdding: .day, value: -days, to: end) else { return nil }
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
+        let anchor = cal.startOfDay(for: start)
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsCollectionQuery(
+                quantityType: type,
+                quantitySamplePredicate: predicate,
+                options: .discreteAverage,
+                anchorDate: anchor,
+                intervalComponents: DateComponents(day: 1)
+            )
+            query.initialResultsHandler = { _, collection, _ in
+                guard let collection else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                var dailyValues: [Double] = []
+                collection.enumerateStatistics(from: start, to: end) { stats, _ in
+                    if let value = stats.averageQuantity()?.doubleValue(for: unit) {
+                        dailyValues.append(value)
+                    }
+                }
+                let mean = dailyValues.isEmpty ? nil : dailyValues.reduce(0, +) / Double(dailyValues.count)
+                continuation.resume(returning: mean)
+            }
+            store.execute(query)
         }
     }
 
