@@ -12,6 +12,7 @@ const MEMORY_CATEGORIES = [
   "Recovery",
   "Skincare",
   "Weight",
+  "Equipment",
 ] as const;
 
 const Output = z.object({

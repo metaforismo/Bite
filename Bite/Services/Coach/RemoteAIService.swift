@@ -62,6 +62,56 @@ final class RemoteAIService {
         return envelope.threads
     }
 
+    private var profileSyncedThisSession = false
+
+    /// Best-effort: pushes the local profile to the worker once per session so
+    /// the coach system prompt can personalize (name, units, goals).
+    func syncProfileIfNeeded(_ profile: UserProfile) async {
+        guard !profileSyncedThisSession else { return }
+        struct Payload: Encodable {
+            let name: String?
+            let gender: String?
+            let age: Int?
+            let heightCm: Double?
+            let weightKg: Double?
+            let targetWeightKg: Double?
+            let activityLevel: String?
+            let calorieGoal: Int
+            let proteinGoalG: Double
+            let carbsGoalG: Double
+            let fatGoalG: Double
+            let dietaryPreferences: [String]
+            let allergies: [String]
+            let coachPersonality: String
+            let units: String
+        }
+        struct Body: Encodable { let profile: Payload }
+        struct Resp: Decodable { let ok: Bool }
+        let payload = Payload(
+            name: profile.name.isEmpty ? nil : profile.name,
+            gender: profile.gender?.displayName,
+            age: profile.age,
+            heightCm: profile.heightCm,
+            weightKg: profile.weightKg,
+            targetWeightKg: profile.targetWeightKg,
+            activityLevel: profile.activityLevel?.displayName,
+            calorieGoal: profile.calorieGoal,
+            proteinGoalG: profile.proteinGoal,
+            carbsGoalG: profile.carbsGoal,
+            fatGoalG: profile.fatGoal,
+            dietaryPreferences: profile.dietaryPreferences.map(\.displayName),
+            allergies: profile.allergies,
+            coachPersonality: profile.coachPersonality.displayName,
+            units: "metric"
+        )
+        do {
+            let _: Resp = try await api.patch("/v1/users/me", body: Body(profile: payload))
+            profileSyncedThisSession = true
+        } catch {
+            // Non-fatal — the chat still works, just less personalized.
+        }
+    }
+
     /// Sends a user message in `threadId`, streaming back typed events.
     /// Persists the inbound stream into the SwiftData ModelContext on the fly.
     func sendMessage(

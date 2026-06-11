@@ -347,6 +347,19 @@ export const journalTags = sqliteTable("journal_tags", {
 });
 
 // ---------------------------------------------------------------------------
+// weight_entries
+// ---------------------------------------------------------------------------
+export const weightEntries = sqliteTable("weight_entries", {
+  id: text("id").primaryKey(),
+  firebaseUid: text("firebase_uid")
+    .notNull()
+    .references(() => users.firebaseUid),
+  weightKg: real("weight_kg").notNull(),
+  recordedAt: integer("recorded_at", { mode: "number" }).notNull(),
+  createdAt: integer("created_at", { mode: "number" }).notNull(),
+});
+
+// ---------------------------------------------------------------------------
 // tool_calls
 // ---------------------------------------------------------------------------
 export const toolCalls = sqliteTable("tool_calls", {

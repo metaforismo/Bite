@@ -1,15 +1,12 @@
 import { z } from "zod";
+import { weightEntries } from "../db/schema";
 import { defineTool } from "./types";
 
 /**
- * Logs a body-weight measurement. The worker doesn't yet persist a
- * weight history server-side — it just validates the value and emits
- * a `tool_result` event. The iOS `CoachToolDispatcher.mirrorWeight`
- * picks it up and writes a `WeightEntry` to local SwiftData so the
- * Today rings, weight chart, and history reflect the change.
- *
- * (D1-side persistence will land alongside CloudKit sync in a later
- * phase. For now the source of truth is the device.)
+ * Logs a body-weight measurement. Persists to D1 (`weight_entries`) and
+ * emits a `tool_result` event; the iOS `CoachToolDispatcher.mirrorWeight`
+ * additionally writes a local `WeightEntry` so the Today rings, weight
+ * chart, and history reflect the change immediately.
  */
 
 const Output = z.object({
@@ -44,10 +41,18 @@ export const addWeightEntryTool = defineTool({
     required: ["weightKg"],
     additionalProperties: false,
   },
-  async run(args, _ctx) {
+  async run(args, ctx) {
+    const recordedAt = args.recordedAt ?? Date.now();
+    await ctx.db.insert(weightEntries).values({
+      id: crypto.randomUUID(),
+      firebaseUid: ctx.uid,
+      weightKg: args.weightKg,
+      recordedAt,
+      createdAt: Date.now(),
+    });
     return {
       weightKg: args.weightKg,
-      recordedAt: args.recordedAt ?? Date.now(),
+      recordedAt,
     };
   },
 });

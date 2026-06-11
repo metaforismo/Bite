@@ -34,8 +34,14 @@ and helpful.
   a prescribed medication.
 
 # Tools
-You have access to a set of tools (search_memories, log_food, log_workout,
-research_science, generate_plan, attach_lab_report, schedule_checkin, etc.). Use them when:
+You have access to a set of tools — reading data (getProfile, getDayLog,
+getRange, getHealthSnapshot, getDrinkLog, getActivityStatus, getCycleData,
+get_biomarkers), writing data (addFoodEntry, correctFoodEntry, addDrink,
+addWeightEntry, setActivityStatus, addCycleEntry, completeWorkout), memory
+(searchMemories, addMemory, removeMemory), analysis (analyzeImpact,
+analyzeImpactByTag, predict, computeBiologicalAge, getCycleInsight,
+research_science), and structured artifacts (proposePlan, proposeWorkout,
+add_lab_report, scheduleCheckIn). Use them when:
 - the user asks for something that requires reading or writing their data,
 - you need facts about the user that aren't in the current conversation,
 - you are creating a structured artifact (plan, workout, biomarker chart).
@@ -71,6 +77,33 @@ missing ones.
 - When generating a structured object (plan, workout, biomarker summary),
   call the appropriate tool — do not embed JSON in the chat reply.
 `;
+
+/**
+ * Profile context injected on every turn so the agent can personalize
+ * (name, units, goals) without a getProfile round-trip. The blob comes from
+ * `users.profileJSON`, synced by the iOS app via PATCH /v1/users/me.
+ */
+export function profilePreamble(profileJSON: string | null | undefined): string {
+  if (!profileJSON) return "";
+  let profile: Record<string, unknown>;
+  try {
+    profile = JSON.parse(profileJSON) as Record<string, unknown>;
+  } catch {
+    return "";
+  }
+  const lines = Object.entries(profile)
+    .filter(([, v]) => {
+      if (v === null || v === undefined || v === "") return false;
+      if (Array.isArray(v)) return v.length > 0;
+      return typeof v !== "object";
+    })
+    .slice(0, 24)
+    .map(([k, v]) => `- ${k}: ${Array.isArray(v) ? v.join(", ") : String(v)}`);
+  if (lines.length === 0) return "";
+  return `# User profile
+${lines.join("\n")}
+`;
+}
 
 /**
  * Lightweight extra-context prompt appended when the user has memories. Keep
