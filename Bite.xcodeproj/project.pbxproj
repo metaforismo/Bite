@@ -6,7 +6,18 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4432F40D2F567700007DB68E /* BiteWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4432F4012F567700007DB68E /* BiteWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
+		4432F40A2F567700007DB68E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4432F3352F5675F4007DB68E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4432F4032F567700007DB68E;
+			remoteInfo = BiteWidgets;
+		};
 		4432F34B2F5675F5007DB68E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 4432F3352F5675F4007DB68E /* Project object */;
@@ -27,12 +38,42 @@
 		4432F33D2F5675F4007DB68E /* Bite.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bite.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4432F34A2F5675F5007DB68E /* BiteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BiteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4432F3542F5675F5007DB68E /* BiteUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BiteUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4432F4012F567700007DB68E /* BiteWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BiteWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		4432F40E2F567700007DB68E /* Exceptions for "Bite" folder in "BiteWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Models/WorkoutActivityAttributes.swift,
+				Services/WidgetSnapshotService.swift,
+			);
+			target = 4432F4032F567700007DB68E /* BiteWidgets */;
+		};
+		4432F40F2F567700007DB68E /* Exceptions for "BiteWidgets" folder in "BiteWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 4432F4032F567700007DB68E /* BiteWidgets */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		4432F33F2F5675F4007DB68E /* Bite */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4432F40E2F567700007DB68E /* Exceptions for "Bite" folder in "BiteWidgets" target */,
+			);
 			path = Bite;
+			sourceTree = "<group>";
+		};
+		4432F4022F567700007DB68E /* BiteWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4432F40F2F567700007DB68E /* Exceptions for "BiteWidgets" folder in "BiteWidgets" target */,
+			);
+			path = BiteWidgets;
 			sourceTree = "<group>";
 		};
 		4432F34D2F5675F5007DB68E /* BiteTests */ = {
@@ -69,13 +110,35 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4432F4052F567700007DB68E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		4432F40C2F567700007DB68E /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				4432F40D2F567700007DB68E /* BiteWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXGroup section */
 		4432F3342F5675F4007DB68E = {
 			isa = PBXGroup;
 			children = (
 				4432F33F2F5675F4007DB68E /* Bite */,
+				4432F4022F567700007DB68E /* BiteWidgets */,
 				4432F34D2F5675F5007DB68E /* BiteTests */,
 				4432F3572F5675F5007DB68E /* BiteUITests */,
 				4432F33E2F5675F4007DB68E /* Products */,
@@ -88,6 +151,7 @@
 				4432F33D2F5675F4007DB68E /* Bite.app */,
 				4432F34A2F5675F5007DB68E /* BiteTests.xctest */,
 				4432F3542F5675F5007DB68E /* BiteUITests.xctest */,
+				4432F4012F567700007DB68E /* BiteWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -102,10 +166,12 @@
 				4432F3392F5675F4007DB68E /* Sources */,
 				4432F33A2F5675F4007DB68E /* Frameworks */,
 				4432F33B2F5675F4007DB68E /* Resources */,
+				4432F40C2F567700007DB68E /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				4432F40B2F567700007DB68E /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				4432F33F2F5675F4007DB68E /* Bite */,
@@ -163,6 +229,28 @@
 			productReference = 4432F3542F5675F5007DB68E /* BiteUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		4432F4032F567700007DB68E /* BiteWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4432F4072F567700007DB68E /* Build configuration list for PBXNativeTarget "BiteWidgets" */;
+			buildPhases = (
+				4432F4042F567700007DB68E /* Sources */,
+				4432F4052F567700007DB68E /* Frameworks */,
+				4432F4062F567700007DB68E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4432F4022F567700007DB68E /* BiteWidgets */,
+			);
+			name = BiteWidgets;
+			packageProductDependencies = (
+			);
+			productName = BiteWidgets;
+			productReference = 4432F4012F567700007DB68E /* BiteWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -184,6 +272,9 @@
 						CreatedOnToolsVersion = 26.3;
 						TestTargetID = 4432F33C2F5675F4007DB68E;
 					};
+					4432F4032F567700007DB68E = {
+						CreatedOnToolsVersion = 26.3;
+					};
 				};
 			};
 			buildConfigurationList = 4432F3382F5675F4007DB68E /* Build configuration list for PBXProject "Bite" */;
@@ -203,6 +294,7 @@
 				4432F33C2F5675F4007DB68E /* Bite */,
 				4432F3492F5675F5007DB68E /* BiteTests */,
 				4432F3532F5675F5007DB68E /* BiteUITests */,
+				4432F4032F567700007DB68E /* BiteWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -223,6 +315,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		4432F3522F5675F5007DB68E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4432F4062F567700007DB68E /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -253,9 +352,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4432F4042F567700007DB68E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		4432F40B2F567700007DB68E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4432F4032F567700007DB68E /* BiteWidgets */;
+			targetProxy = 4432F40A2F567700007DB68E /* PBXContainerItemProxy */;
+		};
 		4432F34C2F5675F5007DB68E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 4432F33C2F5675F4007DB68E /* Bite */;
@@ -407,6 +518,7 @@
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Bite saves your meals' nutrition data to Health.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Bite uses the microphone so you can log meals by voice.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Bite uses speech recognition to transcribe your dictated meals.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_BackgroundColor = BackgroundColor;
@@ -451,6 +563,7 @@
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Bite saves your meals' nutrition data to Health.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Bite uses the microphone so you can log meals by voice.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Bite uses speech recognition to transcribe your dictated meals.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_BackgroundColor = BackgroundColor;
@@ -562,6 +675,66 @@
 			};
 			name = Release;
 		};
+		4432F4082F567700007DB68E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FG2JV74WPG;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BiteWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = BiteWidgets;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.giannicolafrancesco.Bite.BiteWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4432F4092F567700007DB68E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FG2JV74WPG;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BiteWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = BiteWidgets;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.giannicolafrancesco.Bite.BiteWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -597,6 +770,15 @@
 			buildConfigurations = (
 				4432F3652F5675F5007DB68E /* Debug */,
 				4432F3662F5675F5007DB68E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4432F4072F567700007DB68E /* Build configuration list for PBXNativeTarget "BiteWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4432F4082F567700007DB68E /* Debug */,
+				4432F4092F567700007DB68E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

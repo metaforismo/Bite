@@ -9,5 +9,6 @@ struct BiteWidgetsBundle: WidgetBundle {
         EnergyBankWidget()
         HydrationWidget()
         MacrosWidget()
+        WorkoutLiveActivityWidget()
     }
 }
