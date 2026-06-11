@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, like, or } from "drizzle-orm";
 import { memories } from "../db/schema";
-import { defineTool } from "./types";
+import { defineTool, type ToolContext } from "./types";
 import { queryMemories } from "../llm/embed";
 
 const Memory = z.object({
@@ -53,12 +53,12 @@ export const searchMemoriesTool = defineTool({
     try {
       hits = await queryMemories(ctx.uid, args.query, topK, ctx.env);
     } catch (err) {
-      // Vectorize is allowed to soft-fail — fall back to no hits.
+      // Vectorize is allowed to soft-fail — fall back to plain text match.
       console.warn("[searchMemories] vector query failed:", (err as Error).message);
-      return { query: args.query, hits: [] };
+      return { query: args.query, hits: await textFallback(ctx, args.query, topK) };
     }
     if (hits.length === 0) {
-      return { query: args.query, hits: [] };
+      return { query: args.query, hits: await textFallback(ctx, args.query, topK) };
     }
     // Re-fetch from D1 so we return the canonical (possibly-edited) text and
     // verify ownership.
@@ -85,3 +85,34 @@ export const searchMemoriesTool = defineTool({
     };
   },
 });
+
+/** Keyword fallback when semantic search is unavailable or returns nothing. */
+async function textFallback(
+  ctx: ToolContext,
+  query: string,
+  topK: number
+): Promise<{ id: string; category: string; text: string; score: number | null }[]> {
+  const terms = query
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length >= 3)
+    .slice(0, 5);
+  if (terms.length === 0) return [];
+  const rows = await ctx.db
+    .select()
+    .from(memories)
+    .where(
+      and(
+        eq(memories.firebaseUid, ctx.uid),
+        or(...terms.map((t) => like(memories.text, `%${t}%`)))
+      )
+    )
+    .orderBy(desc(memories.updatedAt))
+    .limit(topK);
+  return rows.map((r) => ({
+    id: r.id,
+    category: r.category,
+    text: r.text,
+    score: null,
+  }));
+}

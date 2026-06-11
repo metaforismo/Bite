@@ -128,6 +128,7 @@ final class CoachChatViewModel {
 
         streamTask = Task { [weak self] in
             guard let self else { return }
+            await self.remote.syncProfileIfNeeded(StorageService.shared.loadProfile())
             await self.startNewThreadIfNeeded()
             guard let thread = self.thread else {
                 // Thread creation failed — startNewThreadIfNeeded already set

@@ -30,7 +30,7 @@ import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { activityStatus } from "../db/schema";
+import { activityStatus, users } from "../db/schema";
 import {
   artifacts as artifactsTable,
   memories,
@@ -41,7 +41,7 @@ import {
 import type { AppBindings } from "../types";
 import { sseResponse, type SSEEvent } from "../sse";
 import { LLMRouter, type ChatMessage } from "../llm/router";
-import { BITE_SYSTEM_PROMPT, activityStatusPreamble, memoriesPreamble } from "../llm/system-prompts";
+import { BITE_SYSTEM_PROMPT, activityStatusPreamble, memoriesPreamble, profilePreamble } from "../llm/system-prompts";
 import { buildRegistry } from "../tools/registry";
 import type { ArtifactEmission, HealthSnapshot, ThinkingStepEmission } from "../tools/types";
 import { extractAndStoreMemories } from "../llm/memory";
@@ -113,6 +113,25 @@ router.post("/chat/threads/:id/messages", async (c) => {
     .reverse()
     .map((m) => ({ role: m.role as ChatMessage["role"], content: m.text }));
 
+  // Attachments: tell the model which files arrived with this message so it
+  // can read them (add_lab_report takes the fileId). The DB row stays clean —
+  // the note is appended only to the outbound copy of the user turn.
+  const attachments = body.data.attachments ?? [];
+  if (attachments.length > 0 && prior.length > 0) {
+    const last = prior[prior.length - 1];
+    if (last && last.role === "user") {
+      const list = attachments
+        .map((a) => `- fileId: ${a.fileId} (${a.kind})`)
+        .join("\n");
+      last.content += `\n\n[The user attached ${attachments.length === 1 ? "a file" : "files"} to this message:\n${list}\nUse the add_lab_report tool with the fileId to read lab documents or photos of medical reports.]`;
+    }
+  }
+
+  // Profile preamble (synced by iOS via PATCH /v1/users/me).
+  const userRow = (
+    await db.select().from(users).where(eq(users.firebaseUid, uid)).limit(1)
+  )[0];
+
   // Memory preamble.
   const memoryRows = await db
     .select()
@@ -143,6 +162,7 @@ router.post("/chat/threads/:id/messages", async (c) => {
 
   const systemContent = [
     BITE_SYSTEM_PROMPT,
+    profilePreamble(userRow?.profileJSON),
     statusPreamble,
     memoriesPreamble(memorySnippets),
   ]

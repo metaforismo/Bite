@@ -53,6 +53,11 @@ final class BiteAPIClient: Sendable {
         try await jsonRequest(path: path, method: "POST", body: nil)
     }
 
+    func patch<In: Encodable, Out: Decodable>(_ path: String, body: In) async throws -> Out {
+        let data = try JSONEncoder.bite.encode(body)
+        return try await jsonRequest(path: path, method: "PATCH", body: data)
+    }
+
     func delete<Out: Decodable>(_ path: String) async throws -> Out {
         try await jsonRequest(path: path, method: "DELETE", body: nil)
     }

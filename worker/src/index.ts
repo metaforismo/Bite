@@ -4,6 +4,7 @@ import type { AppBindings } from "./types";
 import { firebaseAuth } from "./middleware/auth";
 import { requestLogger } from "./middleware/log";
 import healthRoute from "./routes/health";
+import usersRoute from "./routes/users";
 import chatRoute from "./routes/chat";
 import chatStreamRoute from "./routes/chat-stream";
 import filesRoute from "./routes/files";
@@ -51,6 +52,7 @@ app.get("/", (c) =>
 const v1 = new Hono<AppBindings>();
 v1.use("*", firebaseAuth());
 v1.route("/", healthRoute);
+v1.route("/", usersRoute);
 v1.route("/", chatRoute);
 v1.route("/", chatStreamRoute);
 v1.route("/", filesRoute);
