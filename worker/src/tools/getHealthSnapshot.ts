@@ -10,26 +10,23 @@ import { defineTool } from "./types";
  * returns `{ available: false, snapshot: {} }`.
  */
 
-const SnapshotShape = z
+export const SnapshotShape = z
   .object({
-    date: z.string().optional(),
-    steps: z.number().optional(),
-    activeKcal: z.number().optional(),
-    restingKcal: z.number().optional(),
+    rhr: z.number().optional(),
+    hrv: z.number().optional(),
     sleepHours: z.number().optional(),
     weightKg: z.number().optional(),
-    heartRateAvg: z.number().optional(),
-    hrv: z.number().optional(),
-    vo2Max: z.number().optional(),
-    workouts: z
-      .array(
-        z.object({
-          type: z.string(),
-          durationMin: z.number(),
-          kcal: z.number().optional(),
-        })
-      )
-      .optional(),
+    heightCm: z.number().optional(),
+    activeEnergyKcal: z.number().optional(),
+    steps: z.number().optional(),
+    respiratoryRate: z.number().optional(),
+    sleepCoreMinutes: z.number().optional(),
+    sleepDeepMinutes: z.number().optional(),
+    sleepRemMinutes: z.number().optional(),
+    hrvBaseline60d: z.number().optional(),
+    rhrBaseline60d: z.number().optional(),
+    capturedAt: z.string().optional(),
+    missing: z.array(z.string()).optional(),
   })
   .passthrough();
 
@@ -41,9 +38,12 @@ const Output = z.object({
 export const getHealthSnapshotTool = defineTool({
   name: "getHealthSnapshot",
   description:
-    "Return today's HealthKit snapshot the iOS client included with this turn: steps, " +
-    "active/resting kcal, sleep hours, weight, HR/HRV, VO2max, recent workouts. Use this " +
-    "before recommending intensity, computing TDEE, or interpreting recovery.",
+    "Return today's HealthKit snapshot the iOS client included with this turn: resting heart " +
+    "rate (rhr), 7-day HRV (hrv), last night's sleepHours plus stage minutes (sleepCoreMinutes, " +
+    "sleepDeepMinutes, sleepRemMinutes), respiratoryRate, today's steps and activeEnergyKcal, " +
+    "latest weightKg/heightCm, 60-day personal baselines (hrvBaseline60d, rhrBaseline60d), and " +
+    "capturedAt. Fields listed in `missing` are unavailable — acknowledge gaps, never invent " +
+    "values. Use this before recommending intensity, computing TDEE, or interpreting recovery.",
   input: z.object({}).strict(),
   output: Output,
   parameters: {

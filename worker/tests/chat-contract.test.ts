@@ -14,6 +14,7 @@ import {
   type PendingToolCall,
 } from "../src/routes/chat-stream";
 import { ALL_TOOLS } from "../src/tools/registry";
+import { SnapshotShape } from "../src/tools/getHealthSnapshot";
 
 describe("ChatBody wire contract", () => {
   it("accepts the canonical iOS payload (camelCase keys, ISO snapshot date, lowercase uuid)", () => {
@@ -54,6 +55,50 @@ describe("ChatBody wire contract", () => {
       attachments: [{ fileId: "7F9C24E5-2C31-4B3A-9D6E-8A1F0B2C3D4E", kind: "pdf" }],
     });
     expect(parsed.success).toBe(true);
+  });
+});
+
+describe("SnapshotShape health snapshot contract", () => {
+  const canonicalSnapshot = {
+    rhr: 52,
+    hrv: 61.5,
+    sleepHours: 7.4,
+    steps: 8421,
+    activeEnergyKcal: 412.3,
+    weightKg: 70.0,
+    heightCm: 178.0,
+    respiratoryRate: 14.2,
+    sleepCoreMinutes: 240.5,
+    sleepDeepMinutes: 62.0,
+    sleepRemMinutes: 88.5,
+    hrvBaseline60d: 58.7,
+    rhrBaseline60d: 54.1,
+    capturedAt: "2026-06-11T08:30:00Z",
+    missing: ["weightKg", "heightCm"],
+  };
+
+  it("parses the canonical iOS snapshot, retaining rhr (not heartRateAvg)", () => {
+    const parsed = SnapshotShape.safeParse(canonicalSnapshot);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.rhr).toBe(52);
+    expect(parsed.data).not.toHaveProperty("heartRateAvg");
+    expect(parsed.data.missing).toEqual(["weightKg", "heightCm"]);
+    expect(parsed.data.hrvBaseline60d).toBe(58.7);
+    expect(parsed.data.sleepDeepMinutes).toBe(62.0);
+  });
+
+  it("accepts a sparse snapshot and passes unknown keys through", () => {
+    const parsed = SnapshotShape.safeParse({
+      rhr: 49,
+      capturedAt: "2026-06-11T08:30:00Z",
+      missing: ["hrv", "sleepHours"],
+      futureField: "kept",
+    });
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.rhr).toBe(49);
+    expect(parsed.data.futureField).toBe("kept");
   });
 });
 

@@ -162,14 +162,7 @@ async function collectDrivers(ctx: import("./types").ToolContext, snap: import("
     const stepsDelta = (snap.steps - 7500) / 5000;
     out.activity.push(driver("Daily steps", -stepsDelta));
   }
-  if (Array.isArray(snap.workouts) && snap.workouts.length > 0) {
-    out.activity.push(driver("Workouts logged this week", -Math.min(1.5, snap.workouts.length * 0.25)));
-  }
-
   // Fitness --------------------------------------------------------------
-  if (typeof snap.vo2Max === "number") {
-    out.fitness.push(driver("VO₂ max", -((snap.vo2Max - 35) / 8)));
-  }
   const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
   const recentSessions = await ctx.db
     .select({ id: strengthSessions.id })
@@ -228,7 +221,7 @@ function computeConfidence(b: BreakdownShape, snap: import("./types").HealthSnap
   if (typeof snap.sleepHours === "number") signals++;
   if (typeof snap.hrv === "number") signals++;
   if (typeof snap.steps === "number") signals++;
-  if (typeof snap.vo2Max === "number") signals++;
+  if (typeof snap.rhr === "number") signals++;
   if (b.blood.length > 0) signals += Math.min(2, b.blood.length / 4);
   if (b.fitness.length > 0) signals++;
   return Math.min(0.95, 0.35 + signals * 0.08);

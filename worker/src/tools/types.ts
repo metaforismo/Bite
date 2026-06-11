@@ -26,20 +26,21 @@ export type DB = ReturnType<typeof drizzle>;
  * may omit subsets. Tools should treat every field as possibly-undefined.
  */
 export interface HealthSnapshot {
-  date?: string; // ISO date "YYYY-MM-DD"
-  steps?: number;
-  activeKcal?: number;
-  restingKcal?: number;
-  sleepHours?: number;
+  rhr?: number; // resting heart rate, bpm
+  hrv?: number; // SDNN ms, 7-day average
+  sleepHours?: number; // last night's total
   weightKg?: number;
-  heartRateAvg?: number;
-  hrv?: number;
-  vo2Max?: number;
-  workouts?: Array<{
-    type: string;
-    durationMin: number;
-    kcal?: number;
-  }>;
+  heightCm?: number;
+  activeEnergyKcal?: number; // today's active energy
+  steps?: number; // today's steps
+  respiratoryRate?: number; // breaths/min, last night
+  sleepCoreMinutes?: number; // last night's core sleep
+  sleepDeepMinutes?: number; // last night's deep sleep
+  sleepRemMinutes?: number; // last night's REM sleep
+  hrvBaseline60d?: number; // mean of daily HRV averages, trailing 60 days
+  rhrBaseline60d?: number; // mean of daily RHR averages, trailing 60 days
+  capturedAt?: string; // ISO 8601 timestamp
+  missing?: string[]; // field names the client could not read
   // Any extra fields the client adds — tools must ignore unknown keys.
   [k: string]: unknown;
 }
