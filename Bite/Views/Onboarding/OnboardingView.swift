@@ -196,7 +196,5 @@ private struct NameInputPage: View {
 }
 
 #Preview {
-    OnboardingView { profile in
-        print("Onboarding complete: \(profile.name)")
-    }
+    OnboardingView { _ in }
 }

@@ -409,9 +409,7 @@ struct NutritionDetailSheet: View {
                     sodium: 480,
                     confidenceLevel: .high
                 ),
-                onCorrect: { correction in
-                    print("Correction: \(correction)")
-                }
+                onCorrect: { _ in }
             )
         }
 }

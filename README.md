@@ -4,6 +4,12 @@
 
 Most health apps show you charts and wait. Bite is built around the opposite idea: the coach should notice things first, explain why they matter, and check back later to see if the advice worked.
 
+## Screenshots
+
+| Today | Coach | Journal | Fitness | Biology |
+|:---:|:---:|:---:|:---:|:---:|
+| ![Today dashboard](docs/screenshots/today.png) | ![Coach chat](docs/screenshots/coach.png) | ![Journal](docs/screenshots/journal.png) | ![Fitness](docs/screenshots/fitness.png) | ![Biology](docs/screenshots/biology.png) |
+
 ## What it does
 
 * **Chat with a coach that has your data.** A streaming chat agent with 29 typed tools: it can read your health snapshot, log food from a photo or free text, propose workouts and training plans, track hydration, caffeine, weight and menstrual cycle.
@@ -25,6 +31,8 @@ The agent loop is tool based: the model never writes to the database directly. E
 
 Model routing goes through OpenRouter (`worker/src/llm/router.ts`), so the stack is provider agnostic. Defaults use OpenAI models: GPT 5.5 for reasoning, GPT 5.4 for vision and structured extraction, GPT 5.4 mini for fast cheap passes, and `text-embedding-3-small` for memory embeddings.
 
+A deeper walkthrough of the agent loop, memory, and the lab pipeline is in [`docs/architecture.md`](docs/architecture.md).
+
 ## Repository layout
 
 ```
@@ -34,6 +42,7 @@ BiteTests/        iOS unit tests
 worker/           Cloudflare Worker backend (TypeScript, Drizzle, Wrangler)
 design-source/    Raw asset exports (Procreate/Figma), committed for reproducibility
 docs/specs/       Design specs for major changes
+docs/screenshots/ App screenshots used in this README
 SETUP.md          Developer onboarding
 ```
 

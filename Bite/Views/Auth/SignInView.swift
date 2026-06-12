@@ -87,13 +87,17 @@ struct SignInView: View {
     }
 
     private func handleEmail() async {
-        // Quick dev path — opens a real email/password sheet once Firebase is wired in.
+        #if DEBUG
+        // Dev-only shortcut against the local stack. Release builds use Sign in with Apple.
         do {
             let session = try await AuthService.shared.signInWithEmail("dev@bite.local", password: "dev")
             onSignedIn(session)
         } catch {
             self.error = error.localizedDescription
         }
+        #else
+        self.error = "Email sign in is coming soon. Use Sign in with Apple."
+        #endif
     }
 
     private func sha256(_ input: String) -> String {

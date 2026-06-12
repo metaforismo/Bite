@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Stub — replaced with categorized exercise library in B6.
+/// Flat exercise list; a categorized library is planned.
 struct CustomExerciseLibraryView: View {
     @Bindable var router: BiteRouter
 
