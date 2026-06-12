@@ -7,19 +7,20 @@
  *        - PDF: best-effort string scan (Workers can't run pdfjs reliably).
  *        - image: hand the base64 image to the vision model and let it
  *          transcribe + structure in one pass.
- *   4. Hand the extracted text to a Sonnet pass with a strict JSON schema
+ *   4. Hand the extracted text to a mid-tier pass with a strict JSON schema
  *      asking for biomarkers + a "discuss with clinician" summary.
  *   5. Persist `lab_reports` + `biomarkers` rows.
  *
  * The pipeline is intentionally synchronous — Cloudflare Workers don't have
  * background job queues by default, and lab parsing typically completes well
- * within the streaming chat-turn deadline (~30s end-to-end on Sonnet).
+ * within the streaming chat-turn deadline (~30s end-to-end).
  */
 import { and, eq } from "drizzle-orm";
 import type { Env } from "../types";
 import type { DB } from "../tools/types";
 import { decryptForUser } from "../encryption";
 import { biomarkers as biomarkersTable, labReports } from "../db/schema";
+import { DEFAULT_MODELS } from "../llm/router";
 import type { LLMRouter } from "../llm/router";
 import { z } from "zod";
 
@@ -143,7 +144,7 @@ export async function runLabAnalysis(args: RunArgs): Promise<RunResult> {
   const parsed = await llm.chat({
     cheap: false,
     vision: useVisionDirect,
-    model: useVisionDirect ? undefined : "anthropic/claude-sonnet-4-6",
+    model: useVisionDirect ? undefined : DEFAULT_MODELS.mid,
     temperature: 0,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },

@@ -10,8 +10,8 @@ import { decryptForUser } from "../encryption";
  * persist it to D1, and emit a `food_cart` artifact for the iOS UI.
  *
  * Routing:
- *   - text-only  → Claude Sonnet (cheap-ish + accurate macros)
- *   - text+photo → Gemini Vision (sees the plate)
+ *   - text-only  → mid tier (cheap-ish + accurate macros)
+ *   - text+photo → vision tier (sees the plate)
  *
  * The model is asked for a strict JSON object; we Zod-parse and fail fast on
  * malformed output.
@@ -105,7 +105,7 @@ export const addFoodEntryTool = defineTool({
       // router uses pure string content, but OpenRouter's vision endpoints
       // also accept a JSON-serialized array under `content` for some
       // providers. To keep it simple, we instead prepend the image as a
-      // markdown-image-style data URI block; Gemini reliably reads this.
+      // markdown-image-style data URI block; multimodal models read this reliably.
       messages.push({
         role: "user",
         content: [
@@ -118,15 +118,15 @@ export const addFoodEntryTool = defineTool({
       // multimodal content array. Since the public LLMRouter only takes
       // string content, we extend by calling the underlying client. To stay
       // within the router contract we forward the data URL inline; recent
-      // Gemini Vision builds accept a `data:` URL embedded in a markdown
+      // vision models accept a `data:` URL embedded in a markdown
       // image. If that fails the model can still infer from the user text.
       messages[messages.length - 1] = {
         role: "user",
         content: `![meal](${dataUrl})\n\nUser said: ${args.text}`,
       };
     } else {
-      // Sonnet for text-only — better number sense than Haiku for macros.
-      modelOverride = DEFAULT_MODELS.sonnet;
+      // Mid tier for text-only — better number sense than the cheap tier for macros.
+      modelOverride = DEFAULT_MODELS.mid;
       messages.push({ role: "user", content: args.text });
     }
 

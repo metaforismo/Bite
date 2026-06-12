@@ -46,7 +46,7 @@ export interface ChatOptions {
   model?: string;
   /** If true, use a vision-capable model. */
   vision?: boolean;
-  /** If true, route to the cheap/fast tier (Haiku). */
+  /** If true, route to the cheap/fast tier. */
   cheap?: boolean;
   /** If true, return an AsyncGenerator of streaming chunks. */
   stream?: boolean;
@@ -86,13 +86,19 @@ export interface ChatMessageResult {
   model: string;
 }
 
-/** Default models. Edit here to swap the routing. */
+/**
+ * Default models. Edit here to swap the routing.
+ *
+ * Routing goes through OpenRouter, so any provider works; defaults are
+ * OpenAI's GPT-5 family. Embeddings (see `embed.ts`) already use OpenAI's
+ * `text-embedding-3-small`.
+ */
 export const DEFAULT_MODELS = {
-  cheap: "anthropic/claude-haiku-4-5",
-  vision: "google/gemini-2.5-pro",
-  primary: "anthropic/claude-opus-4-7",
-  /** Available via explicit `model:` override. */
-  sonnet: "anthropic/claude-sonnet-4-6",
+  cheap: "openai/gpt-5.4-mini",
+  vision: "openai/gpt-5.4",
+  primary: "openai/gpt-5.5",
+  /** Mid tier — accurate structured output at lower cost. Available via explicit `model:` override. */
+  mid: "openai/gpt-5.4",
 } as const;
 
 export class LLMRouter {
@@ -178,8 +184,8 @@ export class LLMRouter {
 
   /**
    * Convenience helper for tools that just need a one-shot text completion.
-   * `task` picks the routing tier ("reasoning" → primary, "cheap" → Haiku,
-   * "vision" → Gemini Vision).
+   * `task` picks the routing tier ("reasoning" → primary, "cheap" → fast
+   * tier, "vision" → multimodal tier).
    */
   async completeText(opts: {
     task: "reasoning" | "cheap" | "vision";

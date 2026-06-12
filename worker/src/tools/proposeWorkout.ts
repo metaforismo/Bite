@@ -4,7 +4,7 @@ import { DEFAULT_MODELS } from "../llm/router";
 
 /**
  * Propose a single workout that respects user-supplied constraints.
- * Uses Claude Opus with a strict JSON schema for the response.
+ * Uses the primary reasoning model with a strict JSON schema for the response.
  */
 
 const Exercise = z.object({
@@ -103,7 +103,7 @@ export const proposeWorkoutTool = defineTool({
     });
 
     const completion = await ctx.llm.chat({
-      model: DEFAULT_MODELS.primary, // Claude Opus
+      model: DEFAULT_MODELS.primary,
       messages: [
         { role: "system", content: SYSTEM },
         {

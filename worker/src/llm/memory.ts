@@ -1,7 +1,7 @@
 /**
  * Post-turn memory extractor.
  *
- * Runs after every assistant message. Calls a cheap Haiku pass that proposes
+ * Runs after every assistant message. Calls a fast-tier pass that proposes
  * 0..3 canonical user facts (Goals / Nutrition / Exercise Preferences /
  * Barriers / Dislikes / Recovery / Skincare / Weight). Each is then deduped
  * against existing memories — first by exact text, then by Vectorize cosine

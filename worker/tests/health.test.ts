@@ -89,7 +89,7 @@ describe("LLMRouter.routeFor", () => {
 
   it("respects an explicit model override", () => {
     expect(
-      LLMRouter.routeFor({ model: DEFAULT_MODELS.sonnet, cheap: true })
-    ).toBe(DEFAULT_MODELS.sonnet);
+      LLMRouter.routeFor({ model: DEFAULT_MODELS.mid, cheap: true })
+    ).toBe(DEFAULT_MODELS.mid);
   });
 });

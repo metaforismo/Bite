@@ -9,11 +9,6 @@ DerivedData/
 xcuserdata/
 *.swp
 
-# Claude Code agent worktrees & derived data
-.claude/worktrees/
-.claude/agents/
-.claude/.derived*/
-
 # SPM
 .swiftpm/
 Package.resolved

@@ -4,7 +4,7 @@ import { defineTool } from "./types";
 import { DEFAULT_MODELS } from "../llm/router";
 
 /**
- * Generate a multi-week training plan via Claude Opus, persist it to D1, and
+ * Generate a multi-week training plan via the primary reasoning model, persist it to D1, and
  * emit a `training_plan` artifact.
  */
 

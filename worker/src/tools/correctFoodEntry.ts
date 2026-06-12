@@ -8,7 +8,7 @@ import { DEFAULT_MODELS } from "../llm/router";
  * Re-emit a `food_cart` artifact at version+1 with corrected macros.
  *
  * Typical use: user says "actually that was a half portion" — we feed the
- * original entry + the correction text into a small Sonnet call and ask for
+ * original entry + the correction text into a small mid-tier call and ask for
  * the corrected JSON. The original D1 row is updated in place; the artifact
  * keeps the same id so the iOS UI patches its existing food cart card.
  */
@@ -126,7 +126,7 @@ export const correctFoodEntryTool = defineTool({
     };
 
     const completion = await ctx.llm.chat({
-      model: DEFAULT_MODELS.sonnet,
+      model: DEFAULT_MODELS.mid,
       messages: [
         { role: "system", content: CORRECTION_SYSTEM },
         {
