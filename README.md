@@ -70,4 +70,4 @@ Tests: `npm run test` (Vitest, 18 tests covering routing, auth and the chat cont
 
 ## License
 
-All rights reserved.
+[PolyForm Noncommercial 1.0.0](LICENSE.md). You can read the code and use it for noncommercial purposes. Any commercial use needs my written permission. Copyright Francesco Giannicola.
